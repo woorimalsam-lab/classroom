@@ -11,6 +11,7 @@
   <header class="topbar">
     <div class="brand">🏫 <span id="brand-name">학급 게시판</span></div>
     <div class="account">
+      <a id="mail-link" class="mail-link" href="mailto:woorimalsam@gmail.com" title="선생님께 메일 보내기">✉️ <span id="mail-text">woorimalsam@gmail.com</span></a>
       <button id="theme-btn" class="btn btn-ghost btn-icon" title="다크 모드 전환">🌙</button>
       <span id="teacher-badge" class="badge hidden">👩‍🏫 교사 모드</span>
       <button id="login-btn" class="btn btn-ghost btn-sm" title="교사용 로그인">교사 로그인</button>
@@ -23,6 +24,8 @@
     <button class="navbtn" data-view="attendance"><span class="navicon">📋</span>출결</button>
     <button class="navbtn" data-view="calendar"><span class="navicon">📅</span>일정</button>
     <button class="navbtn" data-view="meal"><span class="navicon">🍽️</span>급식</button>
+    <button class="navbtn" data-view="roster"><span class="navicon">📄</span>명렬표</button>
+    <button class="navbtn" data-view="tools"><span class="navicon">🛠️</span>도구</button>
     <button class="navbtn" data-view="secret"><span class="navicon">💌</span>익명 우체통</button>
   </nav>
 
@@ -105,6 +108,96 @@
       </div>
     </section>
 
+    <!-- ============ 명렬표 (제출 체크) ============ -->
+    <section id="view-roster" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>📄 명렬표</h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="roster-edit-btn" class="btn btn-ghost btn-sm hidden">👥 명단 등록</button>
+            <button id="check-add-btn" class="btn btn-primary btn-sm hidden">+ 제출 항목</button>
+          </div>
+        </div>
+        <p class="muted view-desc">제출 항목을 누르면 번호·이름 명렬표가 열립니다. ✓ 체크와 비고는 선생님만 수정할 수 있어요.</p>
+        <div id="check-items" class="check-items"></div>
+        <div id="check-table"></div>
+      </div>
+    </section>
+
+    <!-- ============ 도구 ============ -->
+    <section id="view-tools" class="view hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>🛠️ 도구</h2></div>
+        <div class="tool-tabs">
+          <button class="tool-tab active" data-tool="calc">🧮 계산기</button>
+          <button class="tool-tab" data-tool="stopwatch">⏱️ 스톱워치</button>
+          <button class="tool-tab" data-tool="timer">⏲️ 타이머</button>
+          <button class="tool-tab" data-tool="dday">📆 디데이</button>
+        </div>
+
+        <!-- 계산기 -->
+        <div id="tool-calc" class="tool-panel">
+          <input id="calc-display" class="calc-display" readonly value="0" />
+          <div class="calc-grid">
+            <button class="btn calc-btn calc-fn" data-key="C">C</button>
+            <button class="btn calc-btn calc-fn" data-key="back">⌫</button>
+            <button class="btn calc-btn calc-fn" data-key="%">%</button>
+            <button class="btn calc-btn calc-op" data-key="/">÷</button>
+            <button class="btn calc-btn" data-key="7">7</button>
+            <button class="btn calc-btn" data-key="8">8</button>
+            <button class="btn calc-btn" data-key="9">9</button>
+            <button class="btn calc-btn calc-op" data-key="*">×</button>
+            <button class="btn calc-btn" data-key="4">4</button>
+            <button class="btn calc-btn" data-key="5">5</button>
+            <button class="btn calc-btn" data-key="6">6</button>
+            <button class="btn calc-btn calc-op" data-key="-">−</button>
+            <button class="btn calc-btn" data-key="1">1</button>
+            <button class="btn calc-btn" data-key="2">2</button>
+            <button class="btn calc-btn" data-key="3">3</button>
+            <button class="btn calc-btn calc-op" data-key="+">+</button>
+            <button class="btn calc-btn calc-zero" data-key="0">0</button>
+            <button class="btn calc-btn" data-key=".">.</button>
+            <button class="btn calc-btn calc-eq" data-key="=">=</button>
+          </div>
+        </div>
+
+        <!-- 스톱워치 -->
+        <div id="tool-stopwatch" class="tool-panel hidden">
+          <div id="sw-display" class="big-time">00:00.0</div>
+          <div class="tool-actions">
+            <button id="sw-start" class="btn btn-primary">▶ 시작</button>
+            <button id="sw-lap" class="btn btn-ghost">🚩 랩</button>
+            <button id="sw-reset" class="btn btn-ghost">초기화</button>
+          </div>
+          <ol id="sw-laps" class="sw-laps"></ol>
+        </div>
+
+        <!-- 타이머 -->
+        <div id="tool-timer" class="tool-panel hidden">
+          <div id="timer-display" class="big-time">05:00</div>
+          <div class="timer-set">
+            <label>분 <input id="timer-min" type="number" value="5" min="0" max="180" /></label>
+            <label>초 <input id="timer-sec" type="number" value="0" min="0" max="59" /></label>
+          </div>
+          <div class="tool-actions">
+            <button id="timer-start" class="btn btn-primary">▶ 시작</button>
+            <button id="timer-reset" class="btn btn-ghost">초기화</button>
+          </div>
+        </div>
+
+        <!-- 디데이 -->
+        <div id="tool-dday" class="tool-panel hidden">
+          <div class="dday-form">
+            <input id="dday-title" type="text" placeholder="예: 기말고사" maxlength="30" />
+            <input id="dday-date" type="date" />
+            <button id="dday-add" class="btn btn-primary btn-sm">추가</button>
+          </div>
+          <p class="muted small" style="margin:8px 0 14px;">📱 디데이는 내 기기에만 저장됩니다.</p>
+          <div id="dday-list" class="upcoming-list"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ 익명 우체통 ============ -->
     <section id="view-secret" class="view hidden">
       <div class="panel">
@@ -165,6 +258,37 @@
         <span class="spacer"></span>
         <button id="nt-cancel" class="btn btn-ghost">취소</button>
         <button id="nt-save" class="btn btn-primary">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 명단 등록 모달 (교사용) -->
+  <div id="roster-modal" class="modal hidden">
+    <div class="modal-card">
+      <h3>명단 등록</h3>
+      <label>학생 명단 (한 줄에 한 명, "번호 이름" 형식)
+        <textarea id="roster-text" rows="10" placeholder="1 김하늘&#10;2 이바다&#10;3 박구름&#10;&#10;번호 없이 이름만 적으면 순서대로 번호가 붙습니다."></textarea>
+      </label>
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button id="roster-cancel" class="btn btn-ghost">취소</button>
+        <button id="roster-save" class="btn btn-primary">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 제출 항목 추가/수정 모달 (교사용) -->
+  <div id="checkitem-modal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="checkitem-modal-title">제출 항목 추가</h3>
+      <label>항목 이름
+        <input id="ci-title" type="text" placeholder="예: 현장체험학습 동의서" maxlength="50" />
+      </label>
+      <div class="modal-actions">
+        <button id="ci-delete" class="btn btn-danger hidden">삭제</button>
+        <span class="spacer"></span>
+        <button id="ci-cancel" class="btn btn-ghost">취소</button>
+        <button id="ci-save" class="btn btn-primary">저장</button>
       </div>
     </div>
   </div>

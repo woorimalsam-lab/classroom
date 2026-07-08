@@ -257,6 +257,77 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
 .secret-msg-foot { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .secret-msg-date { font-size: 0.75rem; color: var(--muted); }
 
+/* ---------- 이메일 링크 ---------- */
+.mail-link {
+  font-size: 0.82rem; color: var(--muted); text-decoration: none;
+  padding: 4px 8px; border-radius: 8px; white-space: nowrap;
+}
+.mail-link:hover { color: var(--primary); background: var(--primary-soft); }
+
+/* ---------- 명렬표 (제출 체크) ---------- */
+.check-items { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.check-item-chip {
+  font-family: inherit; font-size: 0.88rem; cursor: pointer;
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+}
+.check-item-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+.check-item-chip:hover:not(.active) { background: var(--primary-soft); }
+.check-head { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; flex-wrap: wrap; }
+.check-head h3 { font-size: 1.02rem; }
+.check-progress { font-size: 0.85rem; font-weight: 700; color: var(--ok); background: var(--ok-soft); padding: 3px 11px; border-radius: 999px; }
+.check-table-wrap { overflow-x: auto; }
+.check-btn {
+  font-family: inherit; font-size: 0.95rem; cursor: pointer;
+  width: 34px; height: 30px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--muted);
+}
+.check-btn.done { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 800; }
+.check-btn[disabled] { cursor: default; }
+.check-memo { min-width: 120px; padding: 5px 9px; font-size: 0.85rem; }
+.check-memo-view { font-size: 0.85rem; color: var(--muted); }
+
+/* ---------- 도구 ---------- */
+.tool-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.tool-tab {
+  font-family: inherit; font-size: 0.88rem; cursor: pointer;
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
+}
+.tool-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+.tool-panel { max-width: 420px; margin: 0 auto; }
+
+.calc-display {
+  width: 100%; text-align: right; font-size: 1.7rem; font-weight: 700;
+  padding: 14px 16px; margin-bottom: 12px; letter-spacing: 0.5px;
+}
+.calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.calc-btn { font-size: 1.15rem; padding: 14px 0; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; }
+.calc-fn { background: var(--panel); color: var(--muted); }
+.calc-op { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+.calc-eq { background: var(--primary); color: #fff; font-weight: 800; }
+.calc-zero { grid-column: span 2; }
+
+.big-time {
+  text-align: center; font-size: 3.2rem; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: 1px;
+  margin: 18px 0; color: var(--text);
+}
+.big-time.timeup { color: var(--danger); animation: blink 0.6s step-start infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+.tool-actions { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; }
+.sw-laps { list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.sw-laps li {
+  display: flex; justify-content: space-between; padding: 7px 14px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+  font-size: 0.9rem; font-variant-numeric: tabular-nums;
+}
+.timer-set { display: flex; gap: 12px; justify-content: center; margin-bottom: 14px; }
+.timer-set label { flex-direction: row; align-items: center; gap: 7px; }
+.timer-set input { width: 76px; text-align: center; }
+.dday-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.dday-form input[type="text"] { flex: 1; min-width: 140px; }
+
 /* ---------- 모달 ---------- */
 .modal {
   position: fixed; inset: 0; z-index: 50;
@@ -281,6 +352,7 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
 
 /* ---------- 모바일 ---------- */
 @media (max-width: 560px) {
+  #mail-text { display: none; }   /* 휴대폰에서는 ✉️ 아이콘만 표시 */
   .panel { padding: 16px 14px; }
   .cal-cell { min-height: 56px; font-size: 0.62rem; }
   .navbtn { padding: 7px 10px; font-size: 0.78rem; }
