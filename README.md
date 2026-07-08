@@ -2,7 +2,7 @@
 
 학생·학부모가 보는 우리 반 게시판입니다. [우리말샘 핀](https://woorimalsam-lab.github.io/woorimalsam/)(교사용 앱)과 같은 Firebase 프로젝트를 사용합니다.
 
-**주소: https://woorimalsam-lab.github.io/classboard/**
+**주소: https://woorimalsam-lab.github.io/classroom/**
 
 ## 메뉴 구성
 
