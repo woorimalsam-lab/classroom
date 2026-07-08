@@ -746,8 +746,108 @@ function deleteChecklistItem() {
 
 function openRosterModal() {
   $("roster-text").value = roster.map((s) => `${s.no} ${s.name}`).join("\n");
+  $("roster-file").value = "";
+  $("roster-file-result").classList.add("hidden");
   $("roster-modal").classList.remove("hidden");
   $("roster-text").focus();
+}
+
+// ---- 나이스 명렬표 파일 업로드 → 자동 인식 ----------------------
+// 엑셀 처리 라이브러리는 파일을 올릴 때만 로드 (CDN 실패 시 2차 소스 폴백)
+function ensureXLSX() {
+  if (typeof XLSX !== "undefined") return Promise.resolve();
+  const load = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return load("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js")
+    .catch(() => load("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"))
+    .catch(() => { throw new Error("엑셀 처리 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요."); });
+}
+
+const cellStr = (v) => String(v ?? "").trim();
+
+// 나이스 명렬표(여러 형식)에서 [{no, name}] 추출
+function parseNeisRoster(data) {
+  if (!Array.isArray(data) || !data.length) return { error: "파일이 비어있습니다" };
+
+  // 1) 헤더 행 탐색: 위에서 30행 안에 '성명'/'이름' 칸이 있는 행
+  let headerRow = -1, numberIdx = -1, nameIdx = -1;
+  for (let r = 0; r < Math.min(data.length, 30); r++) {
+    const row = data[r] || [];
+    let nI = -1, nmI = -1;
+    for (let i = 0; i < row.length; i++) {
+      const h = cellStr(row[i]).replace(/\s+/g, "").toLowerCase();
+      if (h === "번호" || h === "번" || h === "no" || h === "number") nI = i;
+      if (h === "성명" || h === "이름" || h === "name") nmI = i;
+    }
+    if (nmI !== -1) { headerRow = r; numberIdx = nI; nameIdx = nmI; break; }
+  }
+
+  const students = [];
+  const push = (no, name) => {
+    name = cellStr(name);
+    if (!name || /^\d+$/.test(name)) return;
+    const n = parseInt(cellStr(no).replace(/번$/, ""), 10);
+    students.push({ no: Number.isFinite(n) ? n : students.length + 1, name });
+  };
+
+  if (headerRow !== -1) {
+    // 표 형식: 헤더 아래 행들에서 번호·성명 열 추출
+    for (let i = headerRow + 1; i < data.length; i++) {
+      const row = (data[i] || []).map(cellStr);
+      if (!row.some(Boolean)) continue;
+      push(numberIdx !== -1 ? row[numberIdx] : "", row[nameIdx]);
+    }
+  } else {
+    // 사진명렬표 형식: "1번 강건" 같은 셀이 흩어져 있음
+    for (const row of data) {
+      for (const cell of row || []) {
+        const m = /^(\d{1,3})\s*번?\s+(.+)$/.exec(cellStr(cell));
+        if (m && m[2].trim() && !/^\d+$/.test(m[2].trim())) push(m[1], m[2]);
+      }
+    }
+  }
+
+  if (!students.length) return { error: "학생을 찾지 못했습니다. '번호/성명' 열이 있는 명렬표인지 확인해 주세요." };
+  // 번호 중복 제거(같은 번호는 첫 항목만) 후 정렬
+  const seen = new Set();
+  const unique = students.filter((s) => !seen.has(s.no) && seen.add(s.no));
+  return { students: unique.sort((a, b) => a.no - b.no) };
+}
+
+async function importRosterFile(file) {
+  const resultEl = $("roster-file-result");
+  const show = (ok, msg) => {
+    resultEl.classList.remove("hidden", "success", "error");
+    resultEl.classList.add(ok ? "success" : "error");
+    resultEl.textContent = `${ok ? "✅" : "❌"} ${msg}`;
+  };
+  try {
+    await ensureXLSX();
+    const isExcel = /\.xlsx?$|\.xls$/i.test(file.name);
+    const content = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error("파일을 읽을 수 없습니다"));
+      if (isExcel) reader.readAsArrayBuffer(file);
+      else reader.readAsText(file);
+    });
+    const wb = isExcel
+      ? XLSX.read(new Uint8Array(content), { type: "array" })
+      : XLSX.read(content, { type: "string" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" });
+    const result = parseNeisRoster(rows);
+    if (result.error) { show(false, result.error); return; }
+    $("roster-text").value = result.students.map((s) => `${s.no} ${s.name}`).join("\n");
+    show(true, `${result.students.length}명을 인식했습니다. 아래 명단을 확인하고 [저장]을 눌러 주세요.`);
+  } catch (e) {
+    console.error("명렬표 파일 처리 실패", e);
+    show(false, e.message || "파일 처리 중 오류가 발생했습니다");
+  }
 }
 async function saveRoster() {
   const lines = $("roster-text").value.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -1039,6 +1139,9 @@ function bindEvents() {
 
   // 명렬표
   $("roster-edit-btn").addEventListener("click", openRosterModal);
+  $("roster-file").addEventListener("change", (e) => {
+    if (e.target.files?.[0]) importRosterFile(e.target.files[0]);
+  });
   $("roster-save").addEventListener("click", saveRoster);
   $("roster-cancel").addEventListener("click", () => $("roster-modal").classList.add("hidden"));
   $("roster-modal").addEventListener("click", (e) => {

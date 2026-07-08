@@ -287,6 +287,12 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
 .check-memo { min-width: 120px; padding: 5px 9px; font-size: 0.85rem; }
 .check-memo-view { font-size: 0.85rem; color: var(--muted); }
 
+.import-result {
+  font-size: 0.85rem; padding: 9px 13px; border-radius: 10px; font-weight: 600;
+}
+.import-result.success { background: var(--ok-soft); color: var(--ok); }
+.import-result.error { background: var(--danger-soft); color: var(--danger); }
+
 /* ---------- 도구 ---------- */
 .tool-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 .tool-tab {

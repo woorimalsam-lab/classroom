@@ -266,6 +266,14 @@
   <div id="roster-modal" class="modal hidden">
     <div class="modal-card">
       <h3>명단 등록</h3>
+      <label>📂 나이스 명렬표 파일 (.xlsx, .csv)
+        <input id="roster-file" type="file" accept=".csv,.xlsx,.xls" />
+      </label>
+      <p class="muted small" style="margin-top:-6px;">
+        나이스에서 받은 명렬표를 그대로 올리면 번호·이름이 아래 칸에 자동으로 채워집니다.
+        내용을 확인한 뒤 <b>[저장]</b>을 누르세요.
+      </p>
+      <div id="roster-file-result" class="import-result hidden"></div>
       <label>학생 명단 (한 줄에 한 명, "번호 이름" 형식)
         <textarea id="roster-text" rows="10" placeholder="1 김하늘&#10;2 이바다&#10;3 박구름&#10;&#10;번호 없이 이름만 적으면 순서대로 번호가 붙습니다."></textarea>
       </label>
