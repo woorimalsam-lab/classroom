@@ -67,7 +67,10 @@
       <div class="panel">
         <div class="panel-head">
           <h2>📅 학사일정</h2>
-          <span id="cal-meta" class="muted small"></span>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span id="cal-meta" class="muted small"></span>
+            <button id="event-add-btn" class="btn btn-primary btn-sm hidden">+ 학급 일정</button>
+          </div>
         </div>
         <div class="cal-toolbar">
           <button id="cal-prev" class="btn btn-icon" title="이전 달">‹</button>
@@ -162,6 +165,26 @@
         <span class="spacer"></span>
         <button id="nt-cancel" class="btn btn-ghost">취소</button>
         <button id="nt-save" class="btn btn-primary">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 학급 일정 추가/수정 모달 (교사용) -->
+  <div id="event-modal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="event-modal-title">학급 일정 추가</h3>
+      <label>제목
+        <input id="ev-title" type="text" placeholder="예: 우리 반 단체사진 촬영" />
+      </label>
+      <label>날짜
+        <input id="ev-date" type="date" />
+      </label>
+      <p class="muted small">🏫 학급 일정은 초록색으로 표시되며 학생들에게 실시간으로 공개됩니다.</p>
+      <div class="modal-actions">
+        <button id="ev-delete" class="btn btn-danger hidden">삭제</button>
+        <span class="spacer"></span>
+        <button id="ev-cancel" class="btn btn-ghost">취소</button>
+        <button id="ev-save" class="btn btn-primary">저장</button>
       </div>
     </div>
   </div>

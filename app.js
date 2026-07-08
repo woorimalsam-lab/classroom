@@ -95,6 +95,7 @@ async function initFirebase() {
 
   subscribeNotices();
   subscribeAttendance();
+  subscribeClassEvents();
 }
 
 function updateTeacherUI() {
@@ -102,9 +103,11 @@ function updateTeacherUI() {
   $("login-btn").classList.toggle("hidden", isTeacher);
   $("logout-btn").classList.toggle("hidden", !isTeacher);
   $("notice-add-btn").classList.toggle("hidden", !isTeacher);
+  $("event-add-btn").classList.toggle("hidden", !isTeacher);
   $("secret-teacher").classList.toggle("hidden", !isTeacher);
   $("secret-student").classList.toggle("hidden", isTeacher);
   renderNotices();
+  if (calLoaded) renderCalendar();
 }
 
 async function login() {
@@ -287,7 +290,7 @@ function renderAttendance() {
 
   const d = parseYmd(attDate);
   const dayTxt = `${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`;
-  const evs = academicEvents.filter((a) => a.date === attDate);
+  const evs = allEvents().filter((a) => a.date === attDate);
   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
   const isHoliday = evs.some((a) => a.holiday);
   let info = dayTxt;
@@ -357,11 +360,79 @@ function shiftAttDate(delta) {
 
 // ============================================================
 //  학사일정 — 우리말샘 핀의 academic-calendar.js 자동 동기화
+//  + 학급 일정 — 교사가 게시판에서 직접 추가 (classboard/events 문서)
 // ============================================================
 let academicEvents = [];
 let academicMeta = null;
+let classEvents = [];
+let editingEventId = null;
 let calLoaded = false;
 let calYear, calMonth; // month: 0-11
+
+// 학교 학사일정 + 학급 일정 통합 목록 (학급 일정은 cls: true)
+function allEvents() {
+  return [
+    ...academicEvents,
+    ...classEvents.map((e) => ({ ...e, cls: true })),
+  ];
+}
+
+function subscribeClassEvents() {
+  const { doc, onSnapshot } = fb.fs;
+  onSnapshot(doc(fb.db, "classboard", "events"),
+    (snap) => {
+      classEvents = (snap.exists() && Array.isArray(snap.data().events)) ? snap.data().events : [];
+      if (calLoaded) renderCalendar();
+      renderAttendance();
+    },
+    (err) => console.error("학급 일정 불러오기 실패", err));
+}
+
+function openEventModal(id = null, presetDate = null) {
+  editingEventId = id;
+  const ev = id ? classEvents.find((e) => e.id === id) : null;
+  $("event-modal-title").textContent = ev ? "학급 일정 수정" : "학급 일정 추가";
+  $("ev-title").value = ev?.title || "";
+  $("ev-date").value = ev?.date || presetDate || todayStr();
+  $("ev-delete").classList.toggle("hidden", !ev);
+  $("event-modal").classList.remove("hidden");
+  $("ev-title").focus();
+}
+
+async function saveClassEvents(next, doneMsg) {
+  const { doc, setDoc } = fb.fs;
+  try {
+    await setDoc(doc(fb.db, "classboard", "events"), {
+      events: next,
+      updatedAt: new Date().toISOString(),
+    });
+    $("event-modal").classList.add("hidden");
+    toast(doneMsg);
+  } catch (e) {
+    console.error(e);
+    toast("저장 실패 — 교사 로그인 상태를 확인해 주세요", 5000);
+  }
+}
+
+function saveClassEvent() {
+  const title = $("ev-title").value.trim();
+  const date = $("ev-date").value;
+  if (!title) { toast("제목을 입력해 주세요"); return; }
+  if (!date) { toast("날짜를 선택해 주세요"); return; }
+  const next = [...classEvents];
+  if (editingEventId) {
+    const ev = next.find((e) => e.id === editingEventId);
+    if (ev) { ev.title = title; ev.date = date; }
+  } else {
+    next.push({ id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, date, title });
+  }
+  saveClassEvents(next, "학급 일정이 저장되었습니다 🏫");
+}
+
+function deleteClassEvent() {
+  if (!editingEventId || !confirm("이 학급 일정을 삭제할까요?")) return;
+  saveClassEvents(classEvents.filter((e) => e.id !== editingEventId), "삭제되었습니다");
+}
 
 async function loadCalendarData() {
   try {
@@ -397,7 +468,7 @@ function renderCalendar() {
     d.setDate(start.getDate() + i);
     const ds = ymd(d);
     const inMonth = d.getMonth() === calMonth;
-    const evs = academicEvents.filter((a) => a.date === ds);
+    const evs = allEvents().filter((a) => a.date === ds);
     const cls = [
       "cal-cell",
       inMonth ? "" : "other",
@@ -406,13 +477,15 @@ function renderCalendar() {
     ].join(" ");
     html += `<div class="${cls}">
       <span class="cal-daynum">${d.getDate()}</span>
-      ${evs.map((e) => `<span class="cal-ev ${e.holiday ? "holiday" : ""}" title="${escapeHtml(e.title)}">${escapeHtml(e.title)}</span>`).join("")}
+      ${evs.map((e) => e.cls
+        ? `<span class="cal-ev cls ${isTeacher ? "editable" : ""}" data-evid="${e.id}" title="${escapeHtml(e.title)}${isTeacher ? " (클릭하여 수정)" : ""}">🏫 ${escapeHtml(e.title)}</span>`
+        : `<span class="cal-ev ${e.holiday ? "holiday" : ""}" title="${escapeHtml(e.title)}">${escapeHtml(e.title)}</span>`).join("")}
     </div>`;
   }
   $("cal-grid").innerHTML = html;
 
-  // 다가오는 일정 (오늘부터 8건)
-  const upcoming = academicEvents
+  // 다가오는 일정 (오늘부터 8건, 학교+학급 일정 통합)
+  const upcoming = allEvents()
     .filter((a) => daysDiff(a.date) >= 0)
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 8);
@@ -422,7 +495,7 @@ function renderCalendar() {
         const d = parseYmd(e.date);
         return `<div class="upcoming-item">
           <span class="upcoming-dday">${diff === 0 ? "오늘" : `D-${diff}`}</span>
-          <span>${e.holiday ? "🔴 " : ""}${escapeHtml(e.title)}</span>
+          <span>${e.cls ? "🏫 " : e.holiday ? "🔴 " : ""}${escapeHtml(e.title)}</span>
           <span class="spacer"></span>
           <span class="upcoming-date">${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})</span>
         </div>`;
@@ -606,6 +679,19 @@ function bindEvents() {
   $("cal-prev").addEventListener("click", () => shiftCalMonth(-1));
   $("cal-next").addEventListener("click", () => shiftCalMonth(1));
   $("cal-today").addEventListener("click", loadCalendar);
+
+  // 학급 일정 (교사 전용)
+  $("event-add-btn").addEventListener("click", () => openEventModal());
+  $("cal-grid").addEventListener("click", (e) => {
+    const chip = e.target.closest(".cal-ev.cls");
+    if (chip && isTeacher) openEventModal(chip.dataset.evid);
+  });
+  $("ev-save").addEventListener("click", saveClassEvent);
+  $("ev-cancel").addEventListener("click", () => $("event-modal").classList.add("hidden"));
+  $("ev-delete").addEventListener("click", deleteClassEvent);
+  $("event-modal").addEventListener("click", (e) => {
+    if (e.target === $("event-modal")) $("event-modal").classList.add("hidden");
+  });
 
   // 급식
   $("meal-prev").addEventListener("click", () => { mealWeekOffset--; loadMeals(); });

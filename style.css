@@ -212,6 +212,9 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .cal-ev.holiday { background: var(--danger-soft); color: var(--holiday); }
+.cal-ev.cls { background: var(--ok-soft); color: var(--ok); }
+.cal-ev.cls.editable { cursor: pointer; }
+.cal-ev.cls.editable:hover { filter: brightness(0.93); }
 .upcoming-list { display: flex; flex-direction: column; gap: 8px; }
 .upcoming-item {
   display: flex; align-items: center; gap: 10px;
