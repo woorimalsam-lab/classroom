@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// ============================================================
+//  우리말샘 핀 + 학급 게시판 통합 Firestore 보안 규칙
+//  적용 방법: Firebase 콘솔 → Firestore Database → 규칙 탭에
+//  이 파일 내용을 통째로 붙여넣고 [게시] 클릭
+//  https://console.firebase.google.com/project/woorimalsam-7f454/firestore/rules
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 교사 본인 확인 (구글 로그인 이메일 기준)
+    function isTeacher() {
+      return request.auth != null
+        && request.auth.token.email == 'woorimalsam@gmail.com';
+    }
+
+    // ---- 우리말샘 핀: 개인 데이터 (메모·일정·할 일) ----
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ---- 학급 게시판: 출결 공유 문서 ----
+    // 누구나 읽기 가능(학생 열람), 쓰기는 교사만(우리말샘 핀에서 자동 발행)
+    match /classboard/{docId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+
+    // ---- 학급 게시판: 공지사항 ----
+    match /classboard_notices/{noticeId} {
+      allow read: if true;
+      allow write: if isTeacher();
+    }
+
+    // ---- 학급 게시판: 익명 메시지 ----
+    // 학생은 로그인 없이 '보내기'만 가능, 읽기/삭제는 교사만
+    match /classboard_messages/{msgId} {
+      allow create: if request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 1000;
+      allow read, delete: if isTeacher();
+      allow update: if false;
+    }
+  }
+}

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>학급 게시판</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🏫 <span id="brand-name">학급 게시판</span></div>
+    <div class="account">
+      <button id="theme-btn" class="btn btn-ghost btn-icon" title="다크 모드 전환">🌙</button>
+      <span id="teacher-badge" class="badge hidden">👩‍🏫 교사 모드</span>
+      <button id="login-btn" class="btn btn-ghost btn-sm" title="교사용 로그인">교사 로그인</button>
+      <button id="logout-btn" class="btn btn-ghost btn-sm hidden">로그아웃</button>
+    </div>
+  </header>
+
+  <nav class="tabbar" id="tabbar">
+    <button class="navbtn active" data-view="notice"><span class="navicon">📢</span>공지사항</button>
+    <button class="navbtn" data-view="attendance"><span class="navicon">📋</span>출결</button>
+    <button class="navbtn" data-view="calendar"><span class="navicon">📅</span>일정</button>
+    <button class="navbtn" data-view="meal"><span class="navicon">🍽️</span>급식</button>
+    <button class="navbtn" data-view="secret"><span class="navicon">💌</span>익명 우체통</button>
+  </nav>
+
+  <main class="main">
+    <!-- ============ 공지사항 ============ -->
+    <section id="view-notice" class="view">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>📢 공지사항</h2>
+          <button id="notice-add-btn" class="btn btn-primary btn-sm hidden">+ 공지 쓰기</button>
+        </div>
+        <p class="muted view-desc">마감 일자와 제출 서류를 확인하세요. <b>D-day가 가까운 공지</b>는 위에 표시됩니다.</p>
+        <div id="notice-list" class="notice-list">
+          <div class="empty-state">공지를 불러오는 중…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 출결 ============ -->
+    <section id="view-attendance" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>📋 출결 현황</h2>
+          <span id="att-updated" class="muted small"></span>
+        </div>
+        <div class="att-toolbar">
+          <select id="att-class" title="학급"></select>
+          <div class="datenav">
+            <button id="att-prev" class="btn btn-icon" title="이전 날">‹</button>
+            <input id="att-date" type="date" />
+            <button id="att-next" class="btn btn-icon" title="다음 날">›</button>
+            <button id="att-today" class="btn btn-ghost btn-sm">오늘</button>
+          </div>
+        </div>
+        <div id="att-dayinfo" class="att-dayinfo"></div>
+        <div id="att-content"><div class="empty-state">출결 정보를 불러오는 중…</div></div>
+      </div>
+    </section>
+
+    <!-- ============ 일정 (학사일정) ============ -->
+    <section id="view-calendar" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>📅 학사일정</h2>
+          <span id="cal-meta" class="muted small"></span>
+        </div>
+        <div class="cal-toolbar">
+          <button id="cal-prev" class="btn btn-icon" title="이전 달">‹</button>
+          <h3 id="cal-month-label" class="cal-month-label"></h3>
+          <button id="cal-next" class="btn btn-icon" title="다음 달">›</button>
+          <button id="cal-today" class="btn btn-ghost btn-sm">이번 달</button>
+        </div>
+        <div id="cal-grid" class="cal-grid"></div>
+        <h3 class="subhead">📌 다가오는 일정</h3>
+        <div id="cal-upcoming" class="upcoming-list"></div>
+      </div>
+    </section>
+
+    <!-- ============ 급식 ============ -->
+    <section id="view-meal" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>🍽️ 이번 주 급식</h2>
+          <span class="muted small">심원고등학교 · NEIS 연동</span>
+        </div>
+        <div class="cal-toolbar">
+          <button id="meal-prev" class="btn btn-icon" title="지난주">‹</button>
+          <h3 id="meal-week-label" class="cal-month-label"></h3>
+          <button id="meal-next" class="btn btn-icon" title="다음주">›</button>
+          <button id="meal-today" class="btn btn-ghost btn-sm">이번 주</button>
+        </div>
+        <div id="meal-list" class="meal-list"><div class="empty-state">급식 정보를 불러오는 중…</div></div>
+        <details class="allergy-info">
+          <summary>알레르기 정보 번호 안내</summary>
+          <p>①난류 ②우유 ③메밀 ④땅콩 ⑤대두 ⑥밀 ⑦고등어 ⑧게 ⑨새우 ⑩돼지고기 ⑪복숭아 ⑫토마토 ⑬아황산류 ⑭호두 ⑮닭고기 ⑯쇠고기 ⑰오징어 ⑱조개류(굴,전복,홍합 포함) ⑲잣</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============ 익명 우체통 ============ -->
+    <section id="view-secret" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>💌 익명 우체통</h2>
+        </div>
+
+        <!-- 학생용: 보내기 -->
+        <div id="secret-student">
+          <p class="muted view-desc">
+            선생님께만 전달되는 <b>비밀 메시지</b>입니다. 다른 학생은 볼 수 없어요.<br />
+            이름을 밝히고 싶으면 마지막에 적어 주세요. (안 적으면 완전 익명)
+          </p>
+          <textarea id="secret-text" rows="6" maxlength="1000"
+            placeholder="하고 싶은 말, 고민, 건의사항 등을 자유롭게 적어 주세요. (최대 1,000자)"></textarea>
+          <div class="secret-actions">
+            <span id="secret-count" class="muted small">0 / 1000</span>
+            <button id="secret-send-btn" class="btn btn-primary">💌 선생님께 보내기</button>
+          </div>
+          <div id="secret-done" class="secret-done hidden">
+            ✅ 메시지가 안전하게 전달되었습니다. 용기 내 줘서 고마워요!
+            <button id="secret-again-btn" class="btn btn-ghost btn-sm">한 통 더 쓰기</button>
+          </div>
+        </div>
+
+        <!-- 교사용: 받은 메시지함 -->
+        <div id="secret-teacher" class="hidden">
+          <h3 class="subhead">📬 받은 메시지</h3>
+          <div id="secret-list" class="secret-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 공지 작성/수정 모달 (교사용) -->
+  <div id="notice-modal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="notice-modal-title">공지 쓰기</h3>
+      <label>제목
+        <input id="nt-title" type="text" placeholder="예: 봉사활동 확인서 제출" />
+      </label>
+      <label>내용
+        <textarea id="nt-body" rows="5" placeholder="자세한 안내 내용"></textarea>
+      </label>
+      <div class="row">
+        <label>마감 일자 (선택)
+          <input id="nt-deadline" type="date" />
+        </label>
+        <label class="checkbox-row" style="align-self:end;">
+          <input id="nt-pinned" type="checkbox" /> 📌 상단 고정
+        </label>
+      </div>
+      <label>제출 서류 / 준비물 (선택, 쉼표로 구분)
+        <input id="nt-items" type="text" placeholder="예: 확인서 원본, 학부모 동의서" />
+      </label>
+      <div class="modal-actions">
+        <button id="nt-delete" class="btn btn-danger hidden">삭제</button>
+        <span class="spacer"></span>
+        <button id="nt-cancel" class="btn btn-ghost">취소</button>
+        <button id="nt-save" class="btn btn-primary">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
