@@ -89,14 +89,20 @@ async function initFirebase() {
       return;
     }
     updateTeacherUI();
-    if (isTeacher) subscribeSecrets();
-    else if (secretsUnsub) { secretsUnsub(); secretsUnsub = null; }
+    if (isTeacher) {
+      subscribeSecrets();
+      subscribeSurveyResponses();
+    } else {
+      if (secretsUnsub) { secretsUnsub(); secretsUnsub = null; }
+      if (surveyRespUnsub) { surveyRespUnsub(); surveyRespUnsub = null; surveyResponses = []; }
+    }
   });
 
   subscribeNotices();
   subscribeAttendance();
   subscribeClassEvents();
   subscribeRoster();
+  subscribeSurveys();
 }
 
 function updateTeacherUI() {
@@ -107,10 +113,12 @@ function updateTeacherUI() {
   $("event-add-btn").classList.toggle("hidden", !isTeacher);
   $("roster-edit-btn").classList.toggle("hidden", !isTeacher);
   $("check-add-btn").classList.toggle("hidden", !isTeacher);
+  $("survey-add-btn").classList.toggle("hidden", !isTeacher);
   $("secret-teacher").classList.toggle("hidden", !isTeacher);
   $("secret-student").classList.toggle("hidden", isTeacher);
   renderNotices();
   renderRoster();
+  renderSurveys();
   if (calLoaded) renderCalendar();
 }
 
@@ -349,10 +357,12 @@ function renderAttendance() {
 
   content.innerHTML = `
     <div class="att-summary">${summary}</div>
-    <table class="att-table">
-      <thead><tr><th>번호</th><th>이름</th><th>구분</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+    <div class="table-wrap">
+      <table class="att-table">
+        <thead><tr><th>번호</th><th>이름</th><th>구분</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 function shiftAttDate(delta) {
@@ -870,6 +880,306 @@ async function saveRoster() {
 }
 
 // ============================================================
+//  설문조사
+//  정의: classboard/surveys { items: [{id, title, open, createdAt, questions:[{q, type, options}]}] }
+//  응답: classboard_survey_responses/{id} {surveyId, no, name, answers:[], createdAt}
+//  → 응답 제출은 누구나, 열람·삭제·엑셀은 교사만 (Firestore 규칙)
+// ============================================================
+let surveys = [];
+let surveyResponses = [];
+let activeSurveyId = null;
+let surveyRespUnsub = null;
+let svDraft = [];   // 설문 만들기 모달의 질문 목록
+
+function subscribeSurveys() {
+  const { doc, onSnapshot } = fb.fs;
+  onSnapshot(doc(fb.db, "classboard", "surveys"),
+    (snap) => {
+      surveys = (snap.exists() && Array.isArray(snap.data().items)) ? snap.data().items : [];
+      if (!surveys.some((s) => s.id === activeSurveyId)) activeSurveyId = null;
+      renderSurveys();
+    },
+    (err) => console.error("설문 불러오기 실패", err));
+}
+function subscribeSurveyResponses() {
+  if (surveyRespUnsub) return;
+  const { collection, onSnapshot, query, orderBy } = fb.fs;
+  const q = query(collection(fb.db, "classboard_survey_responses"), orderBy("createdAt", "asc"));
+  surveyRespUnsub = onSnapshot(q, (snap) => {
+    surveyResponses = snap.docs.map((d) => ({ rid: d.id, ...d.data() }));
+    renderSurveys();
+  }, (err) => console.error("설문 응답 불러오기 실패", err));
+}
+
+const surveyAnsweredKey = (id) => `classboard.survey.${id}`;
+
+function renderSurveys() {
+  const listEl = $("survey-list");
+  if (!listEl) return;
+  const detailEl = $("survey-detail");
+  const visible = isTeacher ? surveys : surveys.filter((s) => s.open);
+
+  if (!visible.length) {
+    listEl.innerHTML = `<div class="empty-state">진행 중인 설문이 없습니다.${isTeacher ? "<br/><b>+ 설문 만들기</b>로 시작해 보세요." : ""}</div>`;
+    detailEl.innerHTML = "";
+    return;
+  }
+
+  listEl.innerHTML = visible.map((s) => {
+    const count = surveyResponses.filter((r) => r.surveyId === s.id).length;
+    const answered = localStorage.getItem(surveyAnsweredKey(s.id));
+    const status = s.open
+      ? `<span class="survey-status">진행 중</span>`
+      : `<span class="survey-status closed">마감</span>`;
+    const meta = isTeacher
+      ? `질문 ${s.questions.length}개 · 응답 ${count}명`
+      : `질문 ${s.questions.length}개${answered ? " · ✅ 참여 완료" : ""}`;
+    const actions = isTeacher ? `
+      <div class="survey-actions">
+        <button class="btn btn-ghost btn-sm" data-sv-excel="${s.id}">📥 엑셀</button>
+        <button class="btn btn-ghost btn-sm" data-sv-toggle="${s.id}">${s.open ? "마감하기" : "다시 열기"}</button>
+        <button class="btn btn-ghost btn-sm" data-sv-del="${s.id}">삭제</button>
+      </div>` : "";
+    return `<div class="survey-card ${s.id === activeSurveyId ? "active" : ""}" data-sv="${s.id}">
+      <div class="survey-card-top"><span class="survey-title">📊 ${escapeHtml(s.title)}</span>${status}</div>
+      <div class="survey-meta">${meta}</div>
+      ${actions}
+    </div>`;
+  }).join("");
+
+  listEl.querySelectorAll("[data-sv]").forEach((card) =>
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("[data-sv-excel],[data-sv-toggle],[data-sv-del]")) return;
+      activeSurveyId = activeSurveyId === card.dataset.sv ? null : card.dataset.sv;
+      renderSurveys();
+    }));
+  listEl.querySelectorAll("[data-sv-excel]").forEach((b) =>
+    b.addEventListener("click", () => exportSurveyExcel(b.dataset.svExcel)));
+  listEl.querySelectorAll("[data-sv-toggle]").forEach((b) =>
+    b.addEventListener("click", () => toggleSurveyOpen(b.dataset.svToggle)));
+  listEl.querySelectorAll("[data-sv-del]").forEach((b) =>
+    b.addEventListener("click", () => deleteSurvey(b.dataset.svDel)));
+
+  const sv = visible.find((s) => s.id === activeSurveyId);
+  if (!sv) { detailEl.innerHTML = ""; return; }
+  detailEl.innerHTML = isTeacher ? surveyResultHtml(sv) : surveyFormHtml(sv);
+  if (!isTeacher) bindSurveyForm(sv);
+}
+
+// ---- 학생: 설문 참여 폼 ----
+function surveyFormHtml(sv) {
+  if (!sv.open) return `<div class="empty-state">마감된 설문입니다.</div>`;
+  if (localStorage.getItem(surveyAnsweredKey(sv.id))) {
+    return `<div class="sv-done">✅ 이미 참여한 설문입니다. 고마워요!</div>`;
+  }
+  const who = roster.length
+    ? `<label>나는 누구인가요?
+        <select id="sv-who">
+          <option value="">— 번호·이름 선택 —</option>
+          ${roster.map((s) => `<option value="${s.no}|${escapeHtml(s.name)}">${s.no}번 ${escapeHtml(s.name)}</option>`).join("")}
+        </select>
+      </label>`
+    : `<label>이름 <input id="sv-who-name" type="text" placeholder="이름을 입력하세요" maxlength="20" /></label>`;
+  const qs = sv.questions.map((q, i) => {
+    const body = q.type === "choice"
+      ? `<div class="sv-choices">${q.options.map((op) =>
+          `<label class="sv-choice"><input type="radio" name="svq${i}" value="${escapeHtml(op)}" /> ${escapeHtml(op)}</label>`).join("")}</div>`
+      : `<textarea class="sv-text" data-qi="${i}" rows="2" maxlength="300" placeholder="답변을 입력하세요"></textarea>`;
+    return `<div class="sv-q"><div class="sv-q-title">Q${i + 1}. ${escapeHtml(q.q)}</div>${body}</div>`;
+  }).join("");
+  return `<div class="sv-form">
+    <h3>📊 ${escapeHtml(sv.title)}</h3>
+    ${who}${qs}
+    <div class="sv-submit-row"><button id="sv-submit" class="btn btn-primary">제출하기</button></div>
+  </div>`;
+}
+
+function bindSurveyForm(sv) {
+  $("sv-submit")?.addEventListener("click", async () => {
+    let no = 0, name = "";
+    if (roster.length) {
+      const v = $("sv-who").value;
+      if (!v) { toast("번호·이름을 선택해 주세요"); return; }
+      const [n, nm] = v.split("|");
+      no = Number(n); name = nm;
+    } else {
+      name = $("sv-who-name").value.trim();
+      if (!name) { toast("이름을 입력해 주세요"); return; }
+    }
+    const answers = sv.questions.map((q, i) => {
+      if (q.type === "choice") {
+        return document.querySelector(`input[name="svq${i}"]:checked`)?.value || "";
+      }
+      return document.querySelector(`.sv-text[data-qi="${i}"]`)?.value.trim() || "";
+    });
+    if (answers.some((a) => !a)) { toast("모든 질문에 답해 주세요"); return; }
+    const btn = $("sv-submit");
+    btn.disabled = true;
+    try {
+      const { collection, addDoc, serverTimestamp } = fb.fs;
+      await addDoc(collection(fb.db, "classboard_survey_responses"), {
+        surveyId: sv.id, no, name, answers, createdAt: serverTimestamp(),
+      });
+      localStorage.setItem(surveyAnsweredKey(sv.id), "1");
+      renderSurveys();
+      toast("설문이 제출되었습니다. 고마워요! 📊");
+    } catch (e) {
+      console.error(e);
+      btn.disabled = false;
+      toast("제출에 실패했습니다. 잠시 후 다시 시도해 주세요.", 5000);
+    }
+  });
+}
+
+// ---- 교사: 결과 보기 ----
+function surveyResultHtml(sv) {
+  const resps = surveyResponses.filter((r) => r.surveyId === sv.id)
+    .sort((a, b) => (a.no || 0) - (b.no || 0));
+  if (!resps.length) return `<div class="empty-state">아직 응답이 없습니다.</div>`;
+
+  const qHtml = sv.questions.map((q, i) => {
+    if (q.type === "choice") {
+      const counts = {};
+      q.options.forEach((op) => { counts[op] = 0; });
+      resps.forEach((r) => { const a = r.answers?.[i]; if (a in counts) counts[a]++; });
+      const max = Math.max(...Object.values(counts), 1);
+      const bars = q.options.map((op) => {
+        const c = counts[op];
+        const pct = Math.round((c / resps.length) * 100);
+        return `<div class="sv-bar-row">
+          <span class="sv-bar-label">${escapeHtml(op)}</span>
+          <div class="sv-bar-track"><div class="sv-bar-fill" style="width:${(c / max) * 100}%"></div></div>
+          <span class="sv-bar-count">${c}명 (${pct}%)</span>
+        </div>`;
+      }).join("");
+      return `<div class="sv-result-q"><div class="sv-q-title">Q${i + 1}. ${escapeHtml(q.q)}</div>${bars}</div>`;
+    }
+    const items = resps.map((r) =>
+      `<li><b>${r.no ? r.no + "번 " : ""}${escapeHtml(r.name)}</b> — ${escapeHtml(r.answers?.[i] || "")}</li>`).join("");
+    return `<div class="sv-result-q"><div class="sv-q-title">Q${i + 1}. ${escapeHtml(q.q)}</div><ul class="sv-text-answers">${items}</ul></div>`;
+  }).join("");
+
+  const names = resps.map((r) => `${r.no ? r.no + " " : ""}${escapeHtml(r.name)}`).join(", ");
+  return `<div class="sv-form">
+    <h3>📊 ${escapeHtml(sv.title)} — 결과 (${resps.length}명 응답)</h3>
+    ${qHtml}
+    <p class="muted small" style="margin-top:14px;">참여: ${names}</p>
+  </div>`;
+}
+
+async function exportSurveyExcel(id) {
+  const sv = surveys.find((s) => s.id === id);
+  if (!sv) return;
+  const resps = surveyResponses.filter((r) => r.surveyId === id)
+    .sort((a, b) => (a.no || 0) - (b.no || 0));
+  if (!resps.length) { toast("아직 응답이 없습니다"); return; }
+  try { await ensureXLSX(); } catch (e) { toast(e.message); return; }
+  const header = ["번호", "이름", "제출 시각", ...sv.questions.map((q, i) => `Q${i + 1}. ${q.q}`)];
+  const rows = resps.map((r) => [
+    r.no || "", r.name,
+    r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString("ko-KR") : "",
+    ...sv.questions.map((_, i) => r.answers?.[i] ?? ""),
+  ]);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws["!cols"] = header.map((h, i) => ({ wch: i < 2 ? 8 : Math.min(Math.max(h.length * 2, 14), 40) }));
+  XLSX.utils.book_append_sheet(wb, ws, "설문 결과");
+  XLSX.writeFile(wb, `설문_${sv.title.slice(0, 20)}_${todayStr()}.xlsx`);
+  toast("엑셀 파일이 다운로드되었습니다 📥");
+}
+
+async function toggleSurveyOpen(id) {
+  const sv = surveys.find((s) => s.id === id);
+  if (!sv) return;
+  sv.open = !sv.open;
+  await saveSurveys();
+  toast(sv.open ? "설문을 다시 열었습니다" : "설문을 마감했습니다");
+}
+async function deleteSurvey(id) {
+  if (!confirm("이 설문과 모든 응답을 삭제할까요?")) return;
+  surveys = surveys.filter((s) => s.id !== id);
+  if (activeSurveyId === id) activeSurveyId = null;
+  await saveSurveys();
+  // 응답도 함께 삭제 (교사 권한)
+  const { doc, deleteDoc } = fb.fs;
+  const targets = surveyResponses.filter((r) => r.surveyId === id);
+  for (const r of targets) {
+    try { await deleteDoc(doc(fb.db, "classboard_survey_responses", r.rid)); } catch (e) { console.error(e); }
+  }
+  toast("삭제되었습니다");
+}
+async function saveSurveys() {
+  const { doc, setDoc } = fb.fs;
+  try {
+    await setDoc(doc(fb.db, "classboard", "surveys"), {
+      items: surveys,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error(e);
+    toast("저장 실패 — 교사 로그인 상태를 확인해 주세요", 5000);
+  }
+}
+
+// ---- 교사: 설문 만들기 모달 ----
+function renderSvDraft() {
+  $("sv-questions").innerHTML = svDraft.map((q, i) => `
+    <div class="sv-q-edit">
+      <div class="sv-q-edit-top">
+        <b>Q${i + 1}</b>
+        <input type="text" data-dq="${i}" value="${escapeHtml(q.q)}" placeholder="질문 내용" maxlength="100" />
+        <select data-dt="${i}">
+          <option value="choice" ${q.type === "choice" ? "selected" : ""}>객관식</option>
+          <option value="text" ${q.type === "text" ? "selected" : ""}>주관식</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" data-dx="${i}" title="질문 삭제">✕</button>
+      </div>
+      ${q.type === "choice"
+        ? `<input type="text" data-do="${i}" value="${escapeHtml(q.optionsRaw || "")}" placeholder="보기를 쉼표로 구분 (예: 놀이공원, 박물관, 영화관)" />`
+        : ""}
+    </div>`).join("");
+  const box = $("sv-questions");
+  box.querySelectorAll("[data-dq]").forEach((el) =>
+    el.addEventListener("input", () => { svDraft[el.dataset.dq].q = el.value; }));
+  box.querySelectorAll("[data-do]").forEach((el) =>
+    el.addEventListener("input", () => { svDraft[el.dataset.do].optionsRaw = el.value; }));
+  box.querySelectorAll("[data-dt]").forEach((el) =>
+    el.addEventListener("change", () => { svDraft[el.dataset.dt].type = el.value; renderSvDraft(); }));
+  box.querySelectorAll("[data-dx]").forEach((el) =>
+    el.addEventListener("click", () => { svDraft.splice(el.dataset.dx, 1); renderSvDraft(); }));
+}
+function openSurveyModal() {
+  $("sv-title").value = "";
+  svDraft = [{ q: "", type: "choice", optionsRaw: "" }];
+  renderSvDraft();
+  $("survey-modal").classList.remove("hidden");
+  $("sv-title").focus();
+}
+async function saveSurvey() {
+  const title = $("sv-title").value.trim();
+  if (!title) { toast("설문 제목을 입력해 주세요"); return; }
+  const questions = [];
+  for (const [i, d] of svDraft.entries()) {
+    const q = d.q.trim();
+    if (!q) { toast(`Q${i + 1} 질문 내용을 입력해 주세요`); return; }
+    if (d.type === "choice") {
+      const options = (d.optionsRaw || "").split(",").map((s) => s.trim()).filter(Boolean);
+      if (options.length < 2) { toast(`Q${i + 1} 보기를 2개 이상 입력해 주세요`); return; }
+      questions.push({ q, type: "choice", options });
+    } else {
+      questions.push({ q, type: "text", options: [] });
+    }
+  }
+  if (!questions.length) { toast("질문을 1개 이상 추가해 주세요"); return; }
+  const id = `sv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  surveys.push({ id, title, open: true, createdAt: Date.now(), questions });
+  activeSurveyId = id;
+  await saveSurveys();
+  $("survey-modal").classList.add("hidden");
+  toast("설문이 시작되었습니다 📊");
+}
+
+// ============================================================
 //  도구 — 계산기 · 스톱워치 · 타이머 · 디데이
 // ============================================================
 // ---- 계산기 ----
@@ -1153,6 +1463,18 @@ function bindEvents() {
   $("ci-delete").addEventListener("click", deleteChecklistItem);
   $("checkitem-modal").addEventListener("click", (e) => {
     if (e.target === $("checkitem-modal")) $("checkitem-modal").classList.add("hidden");
+  });
+
+  // 설문조사
+  $("survey-add-btn").addEventListener("click", openSurveyModal);
+  $("sv-add-q").addEventListener("click", () => {
+    svDraft.push({ q: "", type: "choice", optionsRaw: "" });
+    renderSvDraft();
+  });
+  $("sv-save").addEventListener("click", saveSurvey);
+  $("sv-cancel").addEventListener("click", () => $("survey-modal").classList.add("hidden"));
+  $("survey-modal").addEventListener("click", (e) => {
+    if (e.target === $("survey-modal")) $("survey-modal").classList.add("hidden");
   });
 
   // 도구

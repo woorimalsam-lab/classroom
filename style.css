@@ -293,6 +293,61 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
 .import-result.success { background: var(--ok-soft); color: var(--ok); }
 .import-result.error { background: var(--danger-soft); color: var(--danger); }
 
+/* ---------- 설문조사 ---------- */
+.survey-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.survey-card {
+  border: 1px solid var(--line); border-radius: 12px; padding: 13px 16px;
+  background: var(--bg); cursor: pointer;
+}
+.survey-card.active { border-color: var(--primary); background: var(--primary-soft); }
+.survey-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.survey-title { font-weight: 700; flex: 1; min-width: 50%; }
+.survey-status {
+  font-size: 0.73rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  background: var(--ok-soft); color: var(--ok);
+}
+.survey-status.closed { background: var(--line); color: var(--muted); }
+.survey-meta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+.survey-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+
+.sv-form { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--bg); }
+.sv-form h3 { font-size: 1.05rem; margin-bottom: 12px; }
+.sv-q { margin: 16px 0; }
+.sv-q-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; }
+.sv-choices { display: flex; flex-direction: column; gap: 7px; }
+.sv-choice {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 10px 13px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel); font-size: 0.92rem; font-weight: 400; color: var(--text);
+  flex-direction: row;
+}
+.sv-choice:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); font-weight: 700; }
+.sv-choice input { width: auto; }
+.sv-submit-row { display: flex; justify-content: flex-end; margin-top: 16px; }
+.sv-done {
+  padding: 22px; text-align: center; border-radius: 12px;
+  background: var(--ok-soft); color: var(--ok); font-weight: 700;
+}
+
+/* 설문 결과 (교사) */
+.sv-result-q { margin: 18px 0; }
+.sv-bar-row { display: flex; align-items: center; gap: 9px; margin: 5px 0; font-size: 0.88rem; }
+.sv-bar-label { min-width: 90px; text-align: right; }
+.sv-bar-track { flex: 1; height: 22px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.sv-bar-fill { height: 100%; background: var(--primary); border-radius: 6px; min-width: 2px; }
+.sv-bar-count { min-width: 68px; font-weight: 700; }
+.sv-text-answers { display: flex; flex-direction: column; gap: 6px; }
+.sv-text-answers li {
+  list-style: none; padding: 8px 12px; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 9px; font-size: 0.88rem;
+}
+
+/* 설문 만들기 모달 질문 행 */
+.sv-questions { display: flex; flex-direction: column; gap: 12px; }
+.sv-q-edit { border: 1px solid var(--line); border-radius: 10px; padding: 11px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); }
+.sv-q-edit-top { display: flex; gap: 8px; align-items: center; }
+.sv-q-edit-top input { flex: 1; }
+
 /* ---------- 도구 ---------- */
 .tool-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 .tool-tab {
@@ -356,12 +411,48 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
   z-index: 100; box-shadow: var(--shadow); max-width: 90vw;
 }
 
+/* ---------- 표 가로 스크롤 (모바일 공통) ---------- */
+.table-wrap, .check-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.att-table { min-width: 320px; }
+
 /* ---------- 모바일 ---------- */
 @media (max-width: 560px) {
   #mail-text { display: none; }   /* 휴대폰에서는 ✉️ 아이콘만 표시 */
-  .panel { padding: 16px 14px; }
-  .cal-cell { min-height: 56px; font-size: 0.62rem; }
-  .navbtn { padding: 7px 10px; font-size: 0.78rem; }
-  .topbar { padding: 8px 10px; }
+  .topbar { padding: 8px 10px; flex-wrap: wrap; gap: 4px; }
+  .brand { font-size: 1rem; }
+  .account { gap: 5px; }
+  .badge { font-size: 0.68rem; padding: 2px 8px; }
+  .tabbar { top: auto; padding: 4px 6px; }
+  .navbtn { padding: 8px 9px; font-size: 0.74rem; min-width: 54px; }
+  .navbtn .navicon { font-size: 1.25rem; }
   .main { padding: 12px 8px 50px; }
+  .panel { padding: 16px 12px; border-radius: 12px; }
+  .panel-head h2 { font-size: 1.1rem; }
+
+  /* iOS에서 입력칸 확대 방지 */
+  input, select, textarea { font-size: 16px; }
+
+  /* 달력: 좁은 화면에 맞게 축소 */
+  .cal-cell { min-height: 52px; font-size: 0.6rem; padding: 2px; }
+  .cal-daynum { font-size: 0.7rem; padding: 0 4px; }
+  .cal-month-label { min-width: 90px; font-size: 0.95rem; }
+
+  /* 툴바·날짜 이동 줄바꿈 */
+  .att-toolbar, .cal-toolbar { gap: 7px; }
+  .datenav { flex-wrap: wrap; }
+
+  /* 표: 칸 여백 축소 */
+  .att-table th, .att-table td { padding: 8px 6px; font-size: 0.88rem; }
+  .check-memo { min-width: 90px; }
+
+  /* 모달: 화면 꽉 차게 */
+  .modal { padding: 10px; align-items: flex-end; }
+  .modal-card { max-width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; padding: 18px 16px; }
+
+  /* 도구·설문 */
+  .big-time { font-size: 2.5rem; }
+  .calc-btn { padding: 12px 0; }
+  .sv-bar-label { min-width: 66px; font-size: 0.8rem; }
+  .upcoming-item { font-size: 0.85rem; padding: 8px 10px; }
+  .meal-card { padding: 11px 13px; }
 }

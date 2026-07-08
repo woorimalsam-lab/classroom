@@ -43,5 +43,18 @@ service cloud.firestore {
       allow read, delete: if isTeacher();
       allow update: if false;
     }
+
+    // ---- 학급 게시판: 설문 응답 ----
+    // 학생은 로그인 없이 '제출'만 가능, 전체 결과 열람·삭제는 교사만
+    match /classboard_survey_responses/{respId} {
+      allow create: if request.resource.data.surveyId is string
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 30
+        && request.resource.data.answers is list
+        && request.resource.data.answers.size() <= 30;
+      allow read, delete: if isTeacher();
+      allow update: if false;
+    }
   }
 }
