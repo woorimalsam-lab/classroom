@@ -66,6 +66,7 @@ function showView(name) {
     b.classList.toggle("active", b.dataset.view === name));
   if (name === "meal" && !mealLoaded) loadMeals();
   if (name === "calendar" && !calLoaded) loadCalendar();
+  if (name === "timetable" && !ttLoaded) loadTimetableIndex();
 }
 
 // ============================================================
@@ -522,6 +523,135 @@ function shiftCalMonth(delta) {
   if (calMonth < 0) { calMonth = 11; calYear--; }
   if (calMonth > 11) { calMonth = 0; calYear++; }
   renderCalendar();
+}
+
+// ============================================================
+//  시간표 — 컴시간 뷰어(timetable) 데이터 직접 연동
+//  같은 도메인(woorimalsam-lab.github.io)이라 data/*.json을 그대로 사용
+// ============================================================
+const TT_BASE = "https://woorimalsam-lab.github.io/timetable/";
+const TT_DAYS = ["월", "화", "수", "목", "금"];
+let ttLoaded = false;
+let ttIndex = null;       // {school, current, weeks:[{start,label}]}
+let ttWeekData = null;    // 선택된 주차의 시간표 데이터
+let ttWeekCache = {};     // weekStart -> data
+
+async function loadTimetableIndex() {
+  ttLoaded = true;
+  try {
+    ttIndex = await (await fetch(`${TT_BASE}data/index.json?t=${Date.now()}`)).json();
+  } catch (e) {
+    console.error("시간표 목록 로딩 실패", e);
+    $("tt-grid").innerHTML = `<div class="empty-state">⚠️ 시간표를 불러오지 못했습니다.<br/>잠시 후 다시 시도해 주세요.</div>`;
+    return;
+  }
+  // 주차 선택 채우기 (기본: 오늘이 포함된 주 → current → 첫 번째)
+  const weekSel = $("tt-week");
+  weekSel.innerHTML = ttIndex.weeks.map((w) => `<option value="${w.start}">${w.label}</option>`).join("");
+
+  // 학년 채우기
+  $("tt-grade").innerHTML = [1, 2, 3].map((g) => `<option value="${g}">${g}학년</option>`).join("");
+
+  // 오늘 날짜가 속한 주(월~일) 우선 선택, 없으면 index.current, 없으면 첫 번째
+  const today = todayStr();
+  const inWeek = ttIndex.weeks.find((w) => {
+    const end = ymd(new Date(parseYmd(w.start).getTime() + 6 * 86400000));
+    return today >= w.start && today <= end;
+  });
+  const defWeek = inWeek?.start
+    || ttIndex.weeks.find((w) => w.start === ttIndex.current)?.start
+    || ttIndex.weeks[0]?.start;
+  if (defWeek) weekSel.value = defWeek;
+  await loadTimetableWeek(defWeek);
+}
+
+async function loadTimetableWeek(weekStart) {
+  if (!weekStart) return;
+  const code = ttIndex.school.code;
+  try {
+    if (!ttWeekCache[weekStart]) {
+      ttWeekCache[weekStart] = await (await fetch(`${TT_BASE}data/${code}_${weekStart}.json?t=${Date.now()}`)).json();
+    }
+    ttWeekData = ttWeekCache[weekStart];
+  } catch (e) {
+    console.error("시간표 주차 로딩 실패", e);
+    $("tt-grid").innerHTML = `<div class="empty-state">⚠️ 이 주차의 시간표가 아직 없습니다.</div>`;
+    return;
+  }
+  fillTtClasses();
+  renderTimetable();
+}
+
+// 선택된 학년에 해당하는 반 목록 채우기
+function ttClassList() {
+  const set = new Set();
+  for (const occ of Object.values(ttWeekData.per_teacher)) {
+    for (const e of occ) { if (e.cls) set.add(e.cls); }
+  }
+  return [...set].sort((a, b) => {
+    const [ag, ac] = a.split("-").map(Number), [bg, bc] = b.split("-").map(Number);
+    return ag - bg || ac - bc;
+  });
+}
+function fillTtClasses() {
+  const grade = $("tt-grade").value;
+  const classes = ttClassList().filter((c) => c.startsWith(grade + "-"));
+  const prev = $("tt-class").value;
+  $("tt-class").innerHTML = classes.map((c) => `<option value="${c}">${c.split("-")[1]}반</option>`).join("")
+    || `<option value="">반 없음</option>`;
+  if (classes.includes(prev)) $("tt-class").value = prev;
+}
+
+function renderTimetable() {
+  const grid = $("tt-grid");
+  if (!ttWeekData) return;
+  const cls = $("tt-class").value;
+  const times = ttWeekData.period_times || [];
+  const maxP = ttWeekData.max_period ?? 6;
+
+  // 오늘 요일 열 강조 (이번 주에 한해)
+  const todayDow = new Date().getDay() - 1; // 월=0
+
+  // 반별 시간표 맵 구성: map["day_period"] = {sub, teacher, changed}
+  const map = {};
+  if (cls) {
+    for (const t of ttWeekData.teachers) {
+      for (const e of (ttWeekData.per_teacher[t.idx] || [])) {
+        if (e.cls === cls) map[`${e.day}_${e.period}`] = { sub: e.sub, teacher: t.name, changed: e.changed };
+      }
+    }
+  }
+
+  let head = `<tr><th class="tt-period-th">교시</th>`;
+  TT_DAYS.forEach((d, i) => {
+    head += `<th class="${i === todayDow ? "today-col" : ""}">${d}</th>`;
+  });
+  head += `</tr>`;
+
+  let body = "";
+  for (let p = 0; p <= maxP; p++) {
+    const start = times[p] || "";
+    body += `<tr><td class="tt-period-th">${p + 1}<small>${start}</small></td>`;
+    for (let d = 0; d < 5; d++) {
+      const cell = map[`${d}_${p}`];
+      const todayCls = d === todayDow ? "today-col" : "";
+      if (cell && cell.sub) {
+        body += `<td class="tt-cell ${cell.changed ? "changed" : ""} ${todayCls}">
+          <div class="tt-sub">${escapeHtml(cell.sub)}</div>
+          <div class="tt-teacher">${escapeHtml(cell.teacher || "")}</div>
+        </td>`;
+      } else {
+        body += `<td class="tt-cell ${todayCls}"><span class="tt-empty-cell">·</span></td>`;
+      }
+    }
+    body += `</tr>`;
+  }
+
+  grid.innerHTML = `<table class="tt-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  const total = Object.values(map).filter((c) => c.sub).length;
+  $("tt-meta").textContent = cls
+    ? `${ttWeekData.school?.name || ttIndex.school.name} · ${ttWeekData.week_label || ""} · ${cls.split("-")[0]}학년 ${cls.split("-")[1]}반 · 주당 ${total}시간`
+    : "";
 }
 
 // ============================================================
@@ -1423,6 +1553,11 @@ function bindEvents() {
   $("att-today").addEventListener("click", () => { attDate = todayStr(); renderAttendance(); });
   $("att-date").addEventListener("change", (e) => { if (e.target.value) { attDate = e.target.value; renderAttendance(); } });
   $("att-class").addEventListener("change", renderAttendance);
+
+  // 시간표
+  $("tt-grade").addEventListener("change", () => { fillTtClasses(); renderTimetable(); });
+  $("tt-class").addEventListener("change", renderTimetable);
+  $("tt-week").addEventListener("change", (e) => loadTimetableWeek(e.target.value));
 
   // 일정
   $("cal-prev").addEventListener("click", () => shiftCalMonth(-1));

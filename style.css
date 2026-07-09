@@ -293,6 +293,29 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
 .import-result.success { background: var(--ok-soft); color: var(--ok); }
 .import-result.error { background: var(--danger-soft); color: var(--danger); }
 
+/* ---------- 시간표 ---------- */
+.tt-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.tt-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tt-table { width: 100%; border-collapse: collapse; min-width: 460px; }
+.tt-table th, .tt-table td {
+  border: 1px solid var(--line); text-align: center; vertical-align: middle;
+  padding: 6px 4px;
+}
+.tt-table thead th { background: var(--bg); font-size: 0.8rem; color: var(--muted); font-weight: 700; padding: 8px 4px; }
+.tt-period-th { background: var(--bg); font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+.tt-period-th small { display: block; font-weight: 400; font-size: 0.68rem; }
+.tt-cell { height: 52px; }
+.tt-cell.today-col { background: var(--primary-soft); }
+.tt-sub { font-weight: 700; font-size: 0.88rem; }
+.tt-teacher { font-size: 0.72rem; color: var(--muted); }
+.tt-cell.changed { background: var(--warn-soft); }
+.tt-cell.changed .tt-sub { color: var(--warn); }
+.tt-badge {
+  display: inline-block; font-size: 0.7rem; font-weight: 700;
+  padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--warn);
+}
+.tt-empty-cell { color: var(--line); }
+
 /* ---------- 설문조사 ---------- */
 .survey-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .survey-card {
@@ -448,6 +471,11 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
   /* 모달: 화면 꽉 차게 */
   .modal { padding: 10px; align-items: flex-end; }
   .modal-card { max-width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; padding: 18px 16px; }
+
+  /* 시간표: 좁은 화면에서 칸 축소 */
+  .tt-table th, .tt-table td { padding: 5px 2px; }
+  .tt-sub { font-size: 0.8rem; }
+  .tt-teacher { font-size: 0.66rem; }
 
   /* 도구·설문 */
   .big-time { font-size: 2.5rem; }

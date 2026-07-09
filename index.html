@@ -21,6 +21,7 @@
 
   <nav class="tabbar" id="tabbar">
     <button class="navbtn active" data-view="notice"><span class="navicon">📢</span>공지사항</button>
+    <button class="navbtn" data-view="timetable"><span class="navicon">🕐</span>시간표</button>
     <button class="navbtn" data-view="attendance"><span class="navicon">📋</span>출결</button>
     <button class="navbtn" data-view="calendar"><span class="navicon">📅</span>일정</button>
     <button class="navbtn" data-view="meal"><span class="navicon">🍽️</span>급식</button>
@@ -42,6 +43,23 @@
         <div id="notice-list" class="notice-list">
           <div class="empty-state">공지를 불러오는 중…</div>
         </div>
+      </div>
+    </section>
+
+    <!-- ============ 시간표 ============ -->
+    <section id="view-timetable" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>🕐 시간표</h2>
+          <span id="tt-meta" class="muted small"></span>
+        </div>
+        <div class="tt-toolbar">
+          <select id="tt-grade" title="학년"></select>
+          <select id="tt-class" title="반"></select>
+          <select id="tt-week" title="주차"></select>
+        </div>
+        <div id="tt-grid" class="tt-grid-wrap"><div class="empty-state">시간표를 불러오는 중…</div></div>
+        <p class="muted small" style="margin-top:12px;"><span class="tt-badge">변경</span> 표시는 이동·보강 등 변경된 수업입니다. 시간표는 컴시간에서 자동 갱신됩니다.</p>
       </div>
     </section>
 
