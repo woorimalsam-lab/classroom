@@ -67,6 +67,10 @@ function showView(name) {
   if (name === "meal" && !mealLoaded) loadMeals();
   if (name === "calendar" && !calLoaded) loadCalendar();
   if (name === "timetable" && !ttLoaded) loadTimetableIndex();
+  if (name === "tools") {
+    const active = document.querySelector(".tool-tab.active")?.dataset.tool || "pick";
+    showTool(active);
+  }
 }
 
 // ============================================================
@@ -1462,12 +1466,133 @@ function addDday() {
   renderDdays();
 }
 
+// ---- 뽑기 (랜덤 이름/번호) ----
+let pickedSet = new Set();
+function pickNames() {
+  // 명렬표가 있으면 이름, 없으면 번호 범위
+  if (roster.length) return roster.map((s) => `${s.no}번 ${s.name}`);
+  const max = Math.max(1, Number($("pick-max").value) || 30);
+  return Array.from({ length: max }, (_, i) => `${i + 1}번`);
+}
+function renderPickUI() {
+  $("pick-range").classList.toggle("hidden", roster.length > 0);
+  $("pick-sub").textContent = roster.length
+    ? `명렬표 ${roster.length}명 중에서 뽑습니다`
+    : "명렬표가 없어 번호로 뽑습니다";
+}
+function doPick() {
+  const all = pickNames();
+  const noRepeat = $("pick-norepeat").checked;
+  let pool = noRepeat ? all.filter((n) => !pickedSet.has(n)) : all;
+  if (!pool.length) {
+    if (noRepeat) { toast("전원 다 뽑았어요! 기록을 초기화합니다"); pickedSet.clear(); pool = all; }
+    else return;
+  }
+  const res = $("pick-result");
+  res.classList.add("rolling");
+  // 슬롯머신 효과: 여러 번 바꾸다 멈춤
+  let ticks = 0;
+  const iv = setInterval(() => {
+    res.textContent = pool[Math.floor(Math.random() * pool.length)];
+    if (++ticks >= 10) {
+      clearInterval(iv);
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      res.textContent = chosen;
+      res.classList.remove("rolling");
+      if (noRepeat) pickedSet.add(chosen);
+      renderPickHistory();
+    }
+  }, 60);
+}
+function renderPickHistory() {
+  const arr = [...pickedSet];
+  $("pick-history").innerHTML = arr.length
+    ? `<span class="pick-chip">뽑힌 ${arr.length}명</span>` + arr.map((n) => `<span class="pick-chip">${escapeHtml(n)}</span>`).join("")
+    : "";
+}
+
+// ---- 모둠 편성 ----
+function makeGroups() {
+  if (!roster.length) { toast("먼저 명렬표에 명단을 등록해 주세요"); return; }
+  const names = roster.map((s) => `${s.no}번 ${s.name}`);
+  // 셔플 (Fisher–Yates)
+  for (let i = names.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [names[i], names[j]] = [names[j], names[i]];
+  }
+  const mode = $("group-mode").value;
+  const num = Math.max(1, Number($("group-num").value) || 1);
+  const groupCount = mode === "count" ? num : Math.ceil(names.length / num);
+  const groups = Array.from({ length: groupCount }, () => []);
+  names.forEach((n, i) => groups[i % groupCount].push(n));   // 균등 분배
+  $("group-source").textContent = `총 ${names.length}명 → ${groupCount}개 모둠`;
+  $("group-result").innerHTML = groups.map((g, i) =>
+    `<div class="group-card"><h4>${i + 1}모둠 (${g.length}명)</h4><ul>${g.map((n) => `<li>${escapeHtml(n)}</li>`).join("")}</ul></div>`).join("");
+}
+function syncGroupLabel() {
+  $("group-num-label").textContent = $("group-mode").value === "count" ? "모둠 수" : "모둠당 인원";
+}
+
+// ---- 주사위 ----
+const DIE_PIPS = { // 3x3 그리드에서 눈 위치 (1~9 칸)
+  1: [5], 2: [1, 9], 3: [1, 5, 9], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9],
+};
+function dieHtml(v) {
+  let cells = "";
+  for (let c = 1; c <= 9; c++) cells += DIE_PIPS[v].includes(c) ? `<span class="pip"></span>` : `<span></span>`;
+  return `<div class="die rolling">${cells}</div>`;
+}
+function rollDice() {
+  const n = Math.min(5, Math.max(1, Number($("dice-count").value) || 1));
+  const vals = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * 6));
+  $("dice-display").innerHTML = vals.map(dieHtml).join("");
+  $("dice-sum").textContent = n > 1 ? `합계 ${vals.reduce((a, b) => a + b, 0)}` : "";
+}
+
+// ---- 점수판 (기기별 저장) ----
+const SCORE_KEY = "classboard.scores";
+function loadScores() { try { return JSON.parse(localStorage.getItem(SCORE_KEY)) || []; } catch { return []; } }
+function saveScores(arr) { localStorage.setItem(SCORE_KEY, JSON.stringify(arr)); }
+function renderScores() {
+  const arr = loadScores();
+  $("score-board").innerHTML = arr.length
+    ? arr.map((t) => `<div class="score-row">
+        <span class="score-team">${escapeHtml(t.name)}</span>
+        <button class="score-btn" data-sc-minus="${t.id}">−</button>
+        <span class="score-num">${t.score}</span>
+        <button class="score-btn plus" data-sc-plus="${t.id}">＋</button>
+        <button class="score-del" data-sc-del="${t.id}" title="삭제">🗑️</button>
+      </div>`).join("")
+    : `<div class="empty-state">팀을 추가해 점수를 매겨 보세요.</div>`;
+  $("score-board").querySelectorAll("[data-sc-plus]").forEach((b) => b.addEventListener("click", () => changeScore(b.dataset.scPlus, 1)));
+  $("score-board").querySelectorAll("[data-sc-minus]").forEach((b) => b.addEventListener("click", () => changeScore(b.dataset.scMinus, -1)));
+  $("score-board").querySelectorAll("[data-sc-del]").forEach((b) => b.addEventListener("click", () => {
+    saveScores(loadScores().filter((t) => t.id !== b.dataset.scDel)); renderScores();
+  }));
+}
+function changeScore(id, delta) {
+  const arr = loadScores();
+  const t = arr.find((x) => x.id === id);
+  if (t) { t.score = Math.max(0, t.score + delta); saveScores(arr); renderScores(); }
+}
+function addScoreTeam() {
+  const name = $("score-name").value.trim();
+  if (!name) { toast("팀 이름을 입력해 주세요"); return; }
+  const arr = loadScores();
+  arr.push({ id: `t_${Date.now()}`, name, score: 0 });
+  saveScores(arr);
+  $("score-name").value = "";
+  renderScores();
+}
+
 function showTool(name) {
   document.querySelectorAll(".tool-panel").forEach((p) => p.classList.add("hidden"));
   $(`tool-${name}`).classList.remove("hidden");
   document.querySelectorAll(".tool-tab").forEach((t) =>
     t.classList.toggle("active", t.dataset.tool === name));
   if (name === "dday") renderDdays();
+  if (name === "pick") renderPickUI();
+  if (name === "score") renderScores();
 }
 
 // ============================================================
@@ -1615,6 +1740,18 @@ function bindEvents() {
   // 도구
   document.querySelectorAll(".tool-tab").forEach((t) =>
     t.addEventListener("click", () => showTool(t.dataset.tool)));
+  // 뽑기
+  $("pick-btn").addEventListener("click", doPick);
+  $("pick-reset").addEventListener("click", () => { pickedSet.clear(); renderPickHistory(); $("pick-result").textContent = "🎯"; $("pick-sub").textContent = "아래 [뽑기] 버튼을 누르세요"; });
+  // 모둠
+  $("group-mode").addEventListener("change", syncGroupLabel);
+  $("group-make").addEventListener("click", makeGroups);
+  // 주사위
+  $("dice-roll").addEventListener("click", rollDice);
+  // 점수판
+  $("score-add-btn").addEventListener("click", addScoreTeam);
+  $("score-name").addEventListener("keydown", (e) => { if (e.key === "Enter") addScoreTeam(); });
+  // 계산기
   document.querySelectorAll(".calc-btn").forEach((b) =>
     b.addEventListener("click", () => calcPress(b.dataset.key)));
   $("sw-start").addEventListener("click", swToggle);

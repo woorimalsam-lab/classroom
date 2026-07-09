@@ -412,6 +412,62 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
 .dday-form { display: flex; gap: 8px; flex-wrap: wrap; }
 .dday-form input[type="text"] { flex: 1; min-width: 140px; }
 
+/* 뽑기 */
+.pick-result {
+  text-align: center; font-size: 2.8rem; font-weight: 800;
+  padding: 26px 10px; margin-bottom: 6px; border-radius: 14px;
+  background: var(--primary-soft); color: var(--primary);
+  min-height: 110px; display: flex; align-items: center; justify-content: center;
+  word-break: keep-all;
+}
+.pick-result.rolling { animation: pickpulse 0.4s ease-in-out infinite; }
+@keyframes pickpulse { 50% { transform: scale(1.08); opacity: 0.7; } }
+.pick-sub { text-align: center; margin-bottom: 12px; }
+.pick-opt { justify-content: center; margin: 12px 0; }
+.pick-range { text-align: center; margin-bottom: 12px; }
+.pick-range label { flex-direction: row; align-items: center; justify-content: center; gap: 8px; }
+.pick-range input { width: 90px; }
+.pick-history { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.pick-chip {
+  font-size: 0.82rem; padding: 4px 11px; border-radius: 999px;
+  background: var(--bg); border: 1px solid var(--line); color: var(--muted);
+}
+
+/* 모둠 편성 */
+.group-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.group-result { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.group-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+.group-card h4 { font-size: 0.92rem; color: var(--primary); margin-bottom: 8px; }
+.group-card ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.group-card li { font-size: 0.9rem; }
+
+/* 주사위 */
+.dice-display { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 20px 0 8px; min-height: 70px; }
+.die {
+  width: 64px; height: 64px; border-radius: 14px;
+  background: var(--panel); border: 2px solid var(--line);
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  padding: 9px; box-shadow: var(--shadow);
+}
+.die.rolling { animation: diroll 0.5s ease; }
+@keyframes diroll { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.15); } 100% { transform: rotate(360deg) scale(1); } }
+.die .pip { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); align-self: center; justify-self: center; }
+.dice-sum { text-align: center; font-size: 1.1rem; font-weight: 700; color: var(--muted); margin-bottom: 8px; min-height: 24px; }
+
+/* 점수판 */
+.score-add { display: flex; gap: 8px; }
+.score-add input { flex: 1; }
+.score-board { display: flex; flex-direction: column; gap: 10px; }
+.score-row {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--bg);
+}
+.score-team { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score-num { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; color: var(--primary); }
+.score-btn { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); font-size: 1.2rem; cursor: pointer; color: var(--text); }
+.score-btn.plus { background: var(--primary); color: #fff; border-color: var(--primary); }
+.score-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; }
+
 /* ---------- 모달 ---------- */
 .modal {
   position: fixed; inset: 0; z-index: 50;

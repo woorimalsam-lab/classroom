@@ -161,14 +161,71 @@
       <div class="panel">
         <div class="panel-head"><h2>🛠️ 도구</h2></div>
         <div class="tool-tabs">
-          <button class="tool-tab active" data-tool="calc">🧮 계산기</button>
-          <button class="tool-tab" data-tool="stopwatch">⏱️ 스톱워치</button>
+          <button class="tool-tab active" data-tool="pick">🎯 뽑기</button>
+          <button class="tool-tab" data-tool="group">👥 모둠</button>
+          <button class="tool-tab" data-tool="dice">🎲 주사위</button>
+          <button class="tool-tab" data-tool="score">🏆 점수판</button>
           <button class="tool-tab" data-tool="timer">⏲️ 타이머</button>
+          <button class="tool-tab" data-tool="stopwatch">⏱️ 스톱워치</button>
+          <button class="tool-tab" data-tool="calc">🧮 계산기</button>
           <button class="tool-tab" data-tool="dday">📆 디데이</button>
         </div>
 
+        <!-- 뽑기 (랜덤 이름/번호 뽑기) -->
+        <div id="tool-pick" class="tool-panel">
+          <div id="pick-result" class="pick-result">🎯</div>
+          <p id="pick-sub" class="muted small pick-sub">아래 [뽑기] 버튼을 누르세요</p>
+          <div class="tool-actions">
+            <button id="pick-btn" class="btn btn-primary">🎯 뽑기</button>
+            <button id="pick-reset" class="btn btn-ghost">기록 초기화</button>
+          </div>
+          <label class="checkbox-row pick-opt"><input id="pick-norepeat" type="checkbox" checked /> 이미 뽑힌 사람 제외 (전원 나올 때까지)</label>
+          <div id="pick-range" class="pick-range hidden">
+            <label>번호 범위 <input id="pick-max" type="number" value="30" min="1" max="100" /> 까지</label>
+          </div>
+          <div id="pick-history" class="pick-history"></div>
+        </div>
+
+        <!-- 모둠 편성 -->
+        <div id="tool-group" class="tool-panel hidden">
+          <div class="group-form">
+            <label>기준
+              <select id="group-mode">
+                <option value="count">모둠 수</option>
+                <option value="size">모둠당 인원</option>
+              </select>
+            </label>
+            <label><span id="group-num-label">모둠 수</span> <input id="group-num" type="number" value="4" min="1" max="20" /></label>
+            <button id="group-make" class="btn btn-primary btn-sm">모둠 짜기</button>
+          </div>
+          <p id="group-source" class="muted small" style="margin:8px 0 12px;"></p>
+          <div id="group-result" class="group-result"></div>
+        </div>
+
+        <!-- 주사위 -->
+        <div id="tool-dice" class="tool-panel hidden">
+          <div id="dice-display" class="dice-display"></div>
+          <div id="dice-sum" class="dice-sum"></div>
+          <div class="timer-set">
+            <label>개수 <input id="dice-count" type="number" value="1" min="1" max="5" /></label>
+          </div>
+          <div class="tool-actions">
+            <button id="dice-roll" class="btn btn-primary">🎲 굴리기</button>
+          </div>
+        </div>
+
+        <!-- 점수판 -->
+        <div id="tool-score" class="tool-panel hidden">
+          <div class="score-add">
+            <input id="score-name" type="text" placeholder="팀/모둠 이름" maxlength="16" />
+            <button id="score-add-btn" class="btn btn-primary btn-sm">＋ 팀 추가</button>
+          </div>
+          <p class="muted small" style="margin:8px 0 12px;">📱 점수는 내 기기에만 저장됩니다.</p>
+          <div id="score-board" class="score-board"></div>
+        </div>
+
         <!-- 계산기 -->
-        <div id="tool-calc" class="tool-panel">
+        <div id="tool-calc" class="tool-panel hidden">
           <input id="calc-display" class="calc-display" readonly value="0" />
           <div class="calc-grid">
             <button class="btn calc-btn calc-fn" data-key="C">C</button>
