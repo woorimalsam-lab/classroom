@@ -1585,14 +1585,342 @@ function addScoreTeam() {
   renderScores();
 }
 
+// ---- 원판 룰렛 ----
+const ROU_COLORS = ["#3b6ef5", "#e04f5f", "#2e8b57", "#b7791f", "#7c5cd6", "#d6608f", "#2a9d8f", "#e07b39"];
+let rouAngle = 0, rouSpinning = false;
+
+function rouItems() {
+  const raw = $("rou-items").value.split(",").map((s) => s.trim()).filter(Boolean);
+  if (raw.length >= 2) return raw;
+  if (roster.length >= 2) return roster.map((s) => s.name);
+  return ["항목1", "항목2", "항목3", "항목4"];
+}
+function drawRoulette(items, angle) {
+  const cv = $("rou-canvas"), ctx = cv.getContext("2d");
+  const cx = cv.width / 2, cy = cv.height / 2, r = cv.width / 2 - 6;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const seg = (Math.PI * 2) / items.length;
+  items.forEach((it, i) => {
+    const start = angle + i * seg;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + seg);
+    ctx.closePath();
+    ctx.fillStyle = ROU_COLORS[i % ROU_COLORS.length];
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 라벨
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(start + seg / 2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${items.length > 12 ? 11 : 14}px sans-serif`;
+    const label = it.length > 7 ? it.slice(0, 7) + "…" : it;
+    ctx.fillText(label, r - 12, 5);
+    ctx.restore();
+  });
+  // 중심 원
+  ctx.beginPath();
+  ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.strokeStyle = "#ddd";
+  ctx.stroke();
+  ctx.fillStyle = "#666";
+  ctx.font = "16px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("🎡", cx, cy + 6);
+}
+function spinRoulette() {
+  if (rouSpinning) return;
+  const items = rouItems();
+  rouSpinning = true;
+  $("rou-result").textContent = "";
+  const totalTurns = 5 + Math.random() * 3;         // 5~8바퀴
+  const finalAngle = rouAngle + totalTurns * Math.PI * 2;
+  const duration = 3200;
+  const start = performance.now();
+  const from = rouAngle;
+  function frame(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const ease = 1 - Math.pow(1 - t, 3);            // ease-out
+    rouAngle = from + (finalAngle - from) * ease;
+    drawRoulette(items, rouAngle);
+    if (t < 1) { requestAnimationFrame(frame); return; }
+    rouSpinning = false;
+    // 포인터(위쪽, -90도)가 가리키는 조각 계산
+    const seg = (Math.PI * 2) / items.length;
+    const pointer = ((-Math.PI / 2 - rouAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    const idx = Math.floor(pointer / seg);
+    $("rou-result").textContent = `🎉 ${items[idx]}`;
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---- 대진표 ----
+let brRounds = [];
+function shuffleArr(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function makeBracket(shuffle) {
+  const teams = $("br-teams").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  if (teams.length < 2) { toast("두 팀 이상 입력해 주세요"); return; }
+  if (shuffle) shuffleArr(teams);
+  let p = 1;
+  while (p < teams.length) p *= 2;
+  const slots = [...teams];
+  while (slots.length < p) slots.push(null);      // 부전승 자리
+  brRounds = [slots];
+  for (let size = p / 2; size >= 1; size = Math.floor(size / 2)) {
+    brRounds.push(Array(size).fill(null));
+    if (size === 1) break;
+  }
+  // 부전승 자동 진출
+  for (let i = 0; i < p; i += 2) {
+    if (slots[i] && !slots[i + 1]) brRounds[1][i / 2] = slots[i];
+    if (!slots[i] && slots[i + 1]) brRounds[1][i / 2] = slots[i + 1];
+  }
+  renderBracket();
+}
+function renderBracket() {
+  const view = $("br-view");
+  if (!brRounds.length) { view.innerHTML = ""; return; }
+  const last = brRounds.length - 1;
+  const roundName = (r) => {
+    const remain = brRounds[r].length;
+    if (r === last) return "🏆 우승";
+    if (remain === 1) return "결승";
+    if (remain === 2) return "준결승";
+    return `${remain * 2}강`;
+  };
+  view.innerHTML = brRounds.map((round, r) => {
+    if (r === last) {
+      return `<div class="br-round"><div class="br-round-title">${roundName(r)}</div>
+        <div class="br-champ">${round[0] ? "🏆 " + escapeHtml(round[0]) : "?"}</div></div>`;
+    }
+    let matches = "";
+    for (let i = 0; i < round.length; i += 2) {
+      const a = round[i], b = round[i + 1];
+      const winner = brRounds[r + 1][i / 2];
+      // 1라운드의 빈 칸은 '부전승', 이후 라운드의 빈 칸은 아직 미정
+      const slot = (name) => name
+        ? `<div class="br-slot ${winner === name ? "won" : ""}" data-name="${escapeHtml(name)}" data-r="${r}" data-m="${i / 2}">${escapeHtml(name)}</div>`
+        : `<div class="br-slot empty">${r === 0 ? "부전승" : "미정"}</div>`;
+      matches += `<div class="br-match">${slot(a)}${slot(b)}</div>`;
+    }
+    return `<div class="br-round"><div class="br-round-title">${roundName(r)}</div>${matches}</div>`;
+  }).join("");
+  view.querySelectorAll(".br-slot[data-name]").forEach((el) =>
+    el.addEventListener("click", () => {
+      const r = Number(el.dataset.r), m = Number(el.dataset.m);
+      brRounds[r + 1][m] = el.dataset.name;
+      // 이후 라운드에서 이 경기 결과에 의존하던 값 초기화
+      for (let rr = r + 2; rr < brRounds.length; rr++) brRounds[rr] = brRounds[rr].map(() => null);
+      renderBracket();
+    }));
+}
+
+// ---- 종소리 (WebAudio 합성) ----
+let bellCtx = null;
+function bellAudio() {
+  if (!bellCtx) bellCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return bellCtx;
+}
+function playNote(ctx, freq, start, dur, type = "sine", vol = 0.25) {
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol, ctx.currentTime + start);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+  osc.start(ctx.currentTime + start);
+  osc.stop(ctx.currentTime + start + dur + 0.05);
+}
+const NOTE = { C4: 261.6, D4: 293.7, E4: 329.6, F4: 349.2, G4: 392, A4: 440, B4: 493.9, C5: 523.3, E5: 659.3, G5: 784 };
+function playBell(kind) {
+  try {
+    const ctx = bellAudio();
+    if (ctx.state === "suspended") ctx.resume();
+    if (kind === "school") {
+      // 학교종이 땡땡땡: 솔솔라라 솔솔미
+      [NOTE.G4, NOTE.G4, NOTE.A4, NOTE.A4, NOTE.G4, NOTE.G4, NOTE.E4].forEach((f, i) =>
+        playNote(ctx, f, i * 0.28, 0.26));
+    } else if (kind === "correct") {
+      [NOTE.C5, NOTE.E5, NOTE.G5].forEach((f, i) => playNote(ctx, f, i * 0.12, 0.35));
+    } else if (kind === "wrong") {
+      playNote(ctx, 160, 0, 0.5, "square", 0.15);
+      playNote(ctx, 130, 0.15, 0.5, "square", 0.15);
+    } else if (kind === "fanfare") {
+      [[NOTE.C4, 0], [NOTE.C4, 0.15], [NOTE.C4, 0.3], [NOTE.G4, 0.45], [NOTE.E5, 0.75], [NOTE.G5, 1.05]]
+        .forEach(([f, t]) => playNote(ctx, f, t, 0.35, "triangle", 0.3));
+    } else if (kind === "attention") {
+      playNote(ctx, NOTE.G5, 0, 0.4);
+      playNote(ctx, NOTE.C5, 0.25, 0.6);
+    } else if (kind === "drum") {
+      for (let i = 0; i < 16; i++) playNote(ctx, 90 + Math.random() * 30, i * 0.09, 0.08, "square", 0.18);
+      playNote(ctx, NOTE.G5, 1.5, 0.6, "triangle", 0.3);
+    }
+  } catch (e) { console.error(e); toast("소리를 재생할 수 없습니다"); }
+}
+
+// ---- 소음측정기 ----
+let noiseStream = null, noiseRaf = null, noiseAnalyser = null, noiseAudioCtx = null;
+async function noiseToggle() {
+  if (noiseStream) { noiseStop(); return; }
+  try {
+    noiseStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    console.error(e);
+    $("noise-status").textContent = "⚠️ 마이크 사용이 거부되었습니다. 브라우저 설정에서 허용해 주세요.";
+    return;
+  }
+  noiseAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = noiseAudioCtx.createMediaStreamSource(noiseStream);
+  noiseAnalyser = noiseAudioCtx.createAnalyser();
+  noiseAnalyser.fftSize = 1024;
+  src.connect(noiseAnalyser);
+  $("noise-toggle").textContent = "⏹ 측정 중지";
+  const data = new Uint8Array(noiseAnalyser.fftSize);
+  const tick = () => {
+    noiseAnalyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (const v of data) { const d = (v - 128) / 128; sum += d * d; }
+    const rms = Math.sqrt(sum / data.length);
+    const level = Math.min(100, Math.round(rms * 400));   // 체감 보정
+    const th = Number($("noise-th").value);
+    const bar = $("noise-bar");
+    bar.style.width = `${level}%`;
+    bar.classList.toggle("warn", level >= th * 0.7 && level < th);
+    bar.classList.toggle("over", level >= th);
+    if (level >= th) {
+      $("noise-face").textContent = "🚨";
+      $("noise-status").textContent = "너무 시끄러워요! 조용히 해주세요";
+    } else if (level >= th * 0.7) {
+      $("noise-face").textContent = "😬";
+      $("noise-status").textContent = "조금 소란스러워요";
+    } else {
+      $("noise-face").textContent = "😊";
+      $("noise-status").textContent = "좋아요, 잘하고 있어요";
+    }
+    noiseRaf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+function noiseStop() {
+  if (noiseRaf) cancelAnimationFrame(noiseRaf);
+  noiseStream?.getTracks().forEach((t) => t.stop());
+  noiseAudioCtx?.close();
+  noiseStream = null; noiseRaf = null; noiseAudioCtx = null;
+  const btn = $("noise-toggle");
+  if (btn) btn.textContent = "🎤 측정 시작";
+  $("noise-bar").style.width = "0%";
+  $("noise-face").textContent = "🎤";
+  $("noise-status").textContent = "마이크를 켜면 교실 소음을 측정합니다";
+}
+
+// ---- 시계 ----
+let clockTimer = null;
+function clockTick() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  $("clock-time").textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  $("clock-date").textContent = now.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+}
+
+// ---- 화이트보드 ----
+let wbInit = false, wbDrawing = false, wbColor = "#1d2433", wbEraser = false;
+function initWhiteboard() {
+  if (wbInit) return;
+  wbInit = true;
+  const cv = $("wb-canvas");
+  cv.width = cv.clientWidth;
+  cv.height = cv.clientHeight;
+  const ctx = cv.getContext("2d");
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const pos = (e) => {
+    const r = cv.getBoundingClientRect();
+    return [(e.clientX - r.left) * (cv.width / r.width), (e.clientY - r.top) * (cv.height / r.height)];
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    wbDrawing = true;
+    cv.setPointerCapture(e.pointerId);
+    const [x, y] = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!wbDrawing) return;
+    const [x, y] = pos(e);
+    ctx.globalCompositeOperation = wbEraser ? "destination-out" : "source-over";
+    ctx.strokeStyle = wbColor;
+    ctx.lineWidth = Number($("wb-size").value) * (wbEraser ? 3 : 1);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  });
+  const stop = () => { wbDrawing = false; };
+  cv.addEventListener("pointerup", stop);
+  cv.addEventListener("pointercancel", stop);
+  document.querySelectorAll(".wb-color").forEach((b) =>
+    b.addEventListener("click", () => {
+      wbEraser = false;
+      wbColor = b.dataset.color;
+      document.querySelectorAll(".wb-color").forEach((x) => x.classList.toggle("active", x === b));
+      $("wb-eraser").classList.remove("btn-primary");
+    }));
+  $("wb-eraser").addEventListener("click", () => {
+    wbEraser = !wbEraser;
+    $("wb-eraser").classList.toggle("btn-primary", wbEraser);
+    if (wbEraser) document.querySelectorAll(".wb-color").forEach((x) => x.classList.remove("active"));
+  });
+  $("wb-clear").addEventListener("click", () => {
+    if (confirm("판서를 모두 지울까요?")) ctx.clearRect(0, 0, cv.width, cv.height);
+  });
+}
+
+// ---- QR 코드 ----
+function ensureQRLib() {
+  if (typeof QRCode !== "undefined") return Promise.resolve();
+  const load = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return load("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js")
+    .catch(() => load("https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"))
+    .catch(() => { throw new Error("QR 라이브러리를 불러오지 못했습니다"); });
+}
+async function makeQR() {
+  const text = $("qr-text").value.trim();
+  if (!text) { toast("주소나 문구를 입력해 주세요"); return; }
+  try { await ensureQRLib(); } catch (e) { toast(e.message); return; }
+  $("qr-out").innerHTML = "";
+  new QRCode($("qr-out"), { text, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+}
+
 function showTool(name) {
   document.querySelectorAll(".tool-panel").forEach((p) => p.classList.add("hidden"));
   $(`tool-${name}`).classList.remove("hidden");
   document.querySelectorAll(".tool-tab").forEach((t) =>
     t.classList.toggle("active", t.dataset.tool === name));
+  // 화면 전환 시 정리
+  if (name !== "noise" && noiseStream) noiseStop();
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+  // 각 도구 초기화
   if (name === "dday") renderDdays();
   if (name === "pick") renderPickUI();
   if (name === "score") renderScores();
+  if (name === "roulette") drawRoulette(rouItems(), rouAngle);
+  if (name === "clock") { clockTick(); clockTimer = setInterval(clockTick, 500); }
+  if (name === "board") initWhiteboard();
+  if (name === "qr" && !$("qr-text").value) $("qr-text").value = "https://woorimalsam-lab.github.io/classroom/";
 }
 
 // ============================================================
@@ -1748,6 +2076,28 @@ function bindEvents() {
   $("group-make").addEventListener("click", makeGroups);
   // 주사위
   $("dice-roll").addEventListener("click", rollDice);
+  // 룰렛
+  $("rou-spin").addEventListener("click", spinRoulette);
+  $("rou-items").addEventListener("change", () => drawRoulette(rouItems(), rouAngle));
+  // 대진표
+  $("br-make").addEventListener("click", () => makeBracket(false));
+  $("br-shuffle").addEventListener("click", () => makeBracket(true));
+  $("br-roster").addEventListener("click", () => {
+    if (!roster.length) { toast("명렬표에 등록된 명단이 없습니다"); return; }
+    $("br-teams").value = roster.map((s) => s.name).join("\n");
+    toast(`명단 ${roster.length}명을 불러왔습니다`);
+  });
+  // 종소리
+  document.querySelectorAll("[data-bell]").forEach((b) =>
+    b.addEventListener("click", () => playBell(b.dataset.bell)));
+  // 소음측정기
+  $("noise-toggle").addEventListener("click", noiseToggle);
+  // QR
+  $("qr-make").addEventListener("click", makeQR);
+  $("qr-board").addEventListener("click", () => {
+    $("qr-text").value = "https://woorimalsam-lab.github.io/classroom/";
+    makeQR();
+  });
   // 점수판
   $("score-add-btn").addEventListener("click", addScoreTeam);
   $("score-name").addEventListener("keydown", (e) => { if (e.key === "Enter") addScoreTeam(); });

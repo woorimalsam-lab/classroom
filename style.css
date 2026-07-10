@@ -468,6 +468,85 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
 .score-btn.plus { background: var(--primary); color: #fff; border-color: var(--primary); }
 .score-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; }
 
+/* 룰렛 */
+.tool-panel.wide { max-width: 100%; }
+.rou-wrap { position: relative; width: 320px; max-width: 100%; margin: 0 auto 10px; }
+.rou-pointer {
+  position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+  font-size: 1.6rem; color: var(--danger); z-index: 2; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+#rou-canvas { width: 100%; height: auto; display: block; }
+.rou-result {
+  text-align: center; font-size: 1.4rem; font-weight: 800; min-height: 36px;
+  color: var(--primary); margin-bottom: 6px;
+}
+
+/* 대진표 */
+.br-view { display: flex; gap: 14px; overflow-x: auto; padding: 14px 4px; -webkit-overflow-scrolling: touch; }
+.br-round { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; min-width: 130px; }
+.br-round-title { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.br-match { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); }
+.br-slot {
+  padding: 8px 12px; font-size: 0.85rem; cursor: pointer; border-bottom: 1px solid var(--line);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+}
+.br-slot:last-child { border-bottom: none; }
+.br-slot.empty { color: var(--line); cursor: default; }
+.br-slot.won { background: var(--ok-soft); color: var(--ok); font-weight: 700; }
+.br-slot:hover:not(.empty) { background: var(--primary-soft); }
+.br-champ {
+  border: 2px solid var(--warn); border-radius: 12px; padding: 12px 16px;
+  background: var(--warn-soft); color: var(--warn); font-weight: 800; text-align: center;
+  align-self: center;
+}
+
+/* 종소리 */
+.bell-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.bell-btn {
+  padding: 18px 8px; font-size: 0.9rem; line-height: 1.7; border: 1px solid var(--line);
+  background: var(--bg); border-radius: 14px;
+}
+.bell-btn:active { transform: scale(0.95); }
+
+/* 소음측정기 */
+.noise-face { text-align: center; font-size: 3.4rem; margin: 10px 0; }
+.noise-meter {
+  height: 26px; border-radius: 999px; background: var(--bg);
+  border: 1px solid var(--line); overflow: hidden; margin-bottom: 10px;
+}
+.noise-bar {
+  height: 100%; width: 0%; border-radius: 999px;
+  background: var(--ok); transition: width 0.12s linear, background 0.2s;
+}
+.noise-bar.warn { background: var(--warn); }
+.noise-bar.over { background: var(--danger); }
+.noise-status { text-align: center; font-weight: 700; min-height: 24px; margin-bottom: 6px; }
+.noise-th-row { flex-direction: row; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; }
+
+/* 시계 */
+.clock-time {
+  text-align: center; font-size: 4.6rem; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: 2px; margin: 30px 0 6px;
+}
+.clock-date { text-align: center; font-size: 1.05rem; margin-bottom: 26px; }
+
+/* 화이트보드 */
+.wb-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.wb-color {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer;
+}
+.wb-color.active { outline: 3px solid var(--primary-soft); border-color: var(--primary); }
+.wb-size-label { flex-direction: row; align-items: center; gap: 6px; font-size: 0.8rem; }
+.wb-size-label input { width: 90px; padding: 0; }
+.wb-canvas {
+  width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 12px;
+  background: #fff; touch-action: none; cursor: crosshair; display: block;
+}
+
+/* QR */
+.qr-out { display: flex; justify-content: center; margin: 16px 0; min-height: 40px; }
+.qr-out img, .qr-out canvas { border: 10px solid #fff; border-radius: 8px; box-shadow: var(--shadow); }
+
 /* ---------- 모달 ---------- */
 .modal {
   position: fixed; inset: 0; z-index: 50;

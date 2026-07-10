@@ -162,11 +162,18 @@
         <div class="panel-head"><h2>🛠️ 도구</h2></div>
         <div class="tool-tabs">
           <button class="tool-tab active" data-tool="pick">🎯 뽑기</button>
+          <button class="tool-tab" data-tool="roulette">🎡 룰렛</button>
           <button class="tool-tab" data-tool="group">👥 모둠</button>
+          <button class="tool-tab" data-tool="bracket">🏟️ 대진표</button>
           <button class="tool-tab" data-tool="dice">🎲 주사위</button>
           <button class="tool-tab" data-tool="score">🏆 점수판</button>
           <button class="tool-tab" data-tool="timer">⏲️ 타이머</button>
           <button class="tool-tab" data-tool="stopwatch">⏱️ 스톱워치</button>
+          <button class="tool-tab" data-tool="bell">🔔 종소리</button>
+          <button class="tool-tab" data-tool="noise">📣 소음측정</button>
+          <button class="tool-tab" data-tool="clock">⏰ 시계</button>
+          <button class="tool-tab" data-tool="board">🖍️ 화이트보드</button>
+          <button class="tool-tab" data-tool="qr">🔳 QR</button>
           <button class="tool-tab" data-tool="calc">🧮 계산기</button>
           <button class="tool-tab" data-tool="dday">📆 디데이</button>
         </div>
@@ -222,6 +229,100 @@
           </div>
           <p class="muted small" style="margin:8px 0 12px;">📱 점수는 내 기기에만 저장됩니다.</p>
           <div id="score-board" class="score-board"></div>
+        </div>
+
+        <!-- 원판 룰렛 -->
+        <div id="tool-roulette" class="tool-panel hidden">
+          <div class="rou-wrap">
+            <div class="rou-pointer">▼</div>
+            <canvas id="rou-canvas" width="320" height="320"></canvas>
+          </div>
+          <div id="rou-result" class="rou-result"></div>
+          <div class="tool-actions">
+            <button id="rou-spin" class="btn btn-primary">🎡 돌리기</button>
+          </div>
+          <label>항목 (쉼표로 구분 — 비우면 명렬표 명단 사용)
+            <input id="rou-items" type="text" placeholder="예: 자리 청소, 칠판 정리, 통과, 한 번 더!" maxlength="200" />
+          </label>
+        </div>
+
+        <!-- 대진표 -->
+        <div id="tool-bracket" class="tool-panel wide hidden">
+          <label>참가 팀/이름 (한 줄에 하나)
+            <textarea id="br-teams" rows="4" placeholder="1모둠&#10;2모둠&#10;3모둠&#10;4모둠"></textarea>
+          </label>
+          <div class="tool-actions">
+            <button id="br-make" class="btn btn-primary">대진표 만들기</button>
+            <button id="br-shuffle" class="btn btn-ghost">🔀 순서 섞어서</button>
+            <button id="br-roster" class="btn btn-ghost">명렬표 불러오기</button>
+          </div>
+          <p class="muted small" style="text-align:center;">경기 카드에서 <b>이긴 팀을 클릭</b>하면 다음 라운드로 올라갑니다.</p>
+          <div id="br-view" class="br-view"></div>
+        </div>
+
+        <!-- 종소리 -->
+        <div id="tool-bell" class="tool-panel hidden">
+          <p class="muted small" style="text-align:center; margin-bottom:16px;">수업에서 바로 쓰는 효과음입니다. 버튼을 눌러 보세요! 🔊</p>
+          <div class="bell-grid">
+            <button class="btn bell-btn" data-bell="school">🏫<br/>학교종</button>
+            <button class="btn bell-btn" data-bell="correct">⭕<br/>딩동댕 (정답)</button>
+            <button class="btn bell-btn" data-bell="wrong">❌<br/>땡! (오답)</button>
+            <button class="btn bell-btn" data-bell="fanfare">🎉<br/>빰빠라밤 (축하)</button>
+            <button class="btn bell-btn" data-bell="attention">👀<br/>집중 (딩동)</button>
+            <button class="btn bell-btn" data-bell="drum">🥁<br/>두구두구</button>
+          </div>
+        </div>
+
+        <!-- 소음측정기 -->
+        <div id="tool-noise" class="tool-panel hidden">
+          <div id="noise-face" class="noise-face">🎤</div>
+          <div class="noise-meter"><div id="noise-bar" class="noise-bar"></div></div>
+          <div id="noise-status" class="noise-status muted">마이크를 켜면 교실 소음을 측정합니다</div>
+          <div class="tool-actions">
+            <button id="noise-toggle" class="btn btn-primary">🎤 측정 시작</button>
+          </div>
+          <label class="noise-th-row">경고 기준:
+            <select id="noise-th">
+              <option value="35">도서관 (아주 조용히)</option>
+              <option value="55" selected>모둠 활동 (보통)</option>
+              <option value="75">자유 활동 (넉넉히)</option>
+            </select>
+          </label>
+          <p class="muted small" style="text-align:center;">측정하려면 브라우저의 마이크 사용을 허용해 주세요. 소리는 저장되지 않습니다.</p>
+        </div>
+
+        <!-- 시계 -->
+        <div id="tool-clock" class="tool-panel hidden">
+          <div id="clock-time" class="clock-time">--:--:--</div>
+          <div id="clock-date" class="clock-date muted"></div>
+        </div>
+
+        <!-- 화이트보드 -->
+        <div id="tool-board" class="tool-panel wide hidden">
+          <div class="wb-toolbar">
+            <button class="wb-color active" data-color="#1d2433" style="background:#1d2433"></button>
+            <button class="wb-color" data-color="#e04f5f" style="background:#e04f5f"></button>
+            <button class="wb-color" data-color="#3b6ef5" style="background:#3b6ef5"></button>
+            <button class="wb-color" data-color="#2e8b57" style="background:#2e8b57"></button>
+            <button id="wb-eraser" class="btn btn-ghost btn-sm">🧽 지우개</button>
+            <label class="wb-size-label">굵기 <input id="wb-size" type="range" min="2" max="24" value="4" /></label>
+            <span class="spacer"></span>
+            <button id="wb-clear" class="btn btn-ghost btn-sm">🗑️ 전체 지우기</button>
+          </div>
+          <canvas id="wb-canvas" class="wb-canvas"></canvas>
+        </div>
+
+        <!-- QR 코드 -->
+        <div id="tool-qr" class="tool-panel hidden">
+          <label>QR로 만들 주소/문구
+            <input id="qr-text" type="text" maxlength="300" />
+          </label>
+          <div class="tool-actions">
+            <button id="qr-make" class="btn btn-primary">🔳 QR 만들기</button>
+            <button id="qr-board" class="btn btn-ghost">게시판 주소로</button>
+          </div>
+          <div id="qr-out" class="qr-out"></div>
+          <p class="muted small" style="text-align:center;">화면에 크게 띄워 학생들이 폰으로 찍게 하세요.</p>
         </div>
 
         <!-- 계산기 -->
