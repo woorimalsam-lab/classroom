@@ -20,6 +20,12 @@
   --holiday: #d64550;
   --shadow: 0 2px 10px rgba(20, 32, 60, 0.06);
   --radius: 14px;
+
+  /* 강원교육 글꼴 체계 */
+  --font-body: 'GangwonAll', "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-display: 'GangwonPower', var(--font-body);
+  --font-hand: 'GangwonHand', var(--font-body);
+  --font-meal: 'GangwonSaeeum', var(--font-body);
 }
 html[data-theme="dark"] {
   --bg: #151923;
@@ -40,7 +46,8 @@ html[data-theme="dark"] {
 }
 
 body {
-  font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-family: var(--font-body);
+  word-break: keep-all;
   background: var(--bg);
   color: var(--text);
   line-height: 1.55;
@@ -619,3 +626,74 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; col
   .upcoming-item { font-size: 0.85rem; padding: 8px 10px; }
   .meal-card { padding: 11px 13px; }
 }
+
+/* ============================================================
+   강원교육 글꼴 적용 — 요소별 역할
+   본문: 모두(All) / 제목·숫자: 튼튼(Power)
+   손글씨 포인트: 현옥샘(Hand) / 급식 식단: 새음(Saeeum)
+   ============================================================ */
+
+/* ---- 제목·브랜드·큰 숫자: 튼튼 ---- */
+.brand,
+.panel-head h2,
+.subhead,
+.cal-month-label,
+.sv-form h3,
+.modal-card h3,
+.group-card h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+.brand { letter-spacing: 0; }
+
+/* 숫자·결과가 돋보여야 하는 곳 */
+.big-time,
+.clock-time,
+.score-num,
+.pick-result,
+.rou-result,
+.dice-sum,
+.calc-display,
+.upcoming-dday,
+.dday,
+.check-progress,
+.br-champ,
+.meal-today-chip,
+.att-label,
+.survey-status,
+.badge {
+  font-family: var(--font-display);
+}
+
+/* ---- 손글씨 포인트: 현옥샘 ---- */
+.view-desc,
+.empty-state,
+.secret-done,
+.sv-done,
+.pick-sub,
+.noise-status,
+.att-allpresent,
+.progress-hint,
+.allergy-info p {
+  font-family: var(--font-hand);
+  letter-spacing: 0.01em;
+}
+/* 손글씨는 획이 얇아 살짝 키우고 줄간격을 넓혀 가독성 보정 */
+.view-desc { font-size: 1.02rem; line-height: 1.75; }
+.empty-state { font-size: 1.05rem; line-height: 1.8; }
+.secret-done, .sv-done, .att-allpresent { font-size: 1.05rem; }
+.noise-status { font-size: 1rem; }
+.pick-sub { font-size: 0.95rem; }
+.progress-hint, .allergy-info p { font-size: 0.9rem; }
+
+/* 급식: 알레르기 번호가 새음 글꼴에서 작아 보여 보정 */
+.meal-dishes .allergen { font-size: 0.78rem; }
+
+/* ---- 급식 식단: 새음 ---- */
+.meal-dishes { font-family: var(--font-meal); font-size: 0.97rem; }
+
+/* ---- 글꼴 교체에 따른 미세 조정 ---- */
+.navbtn { letter-spacing: -0.02em; }
+.att-table th, .tt-table thead th { letter-spacing: 0; }
+.tt-sub { letter-spacing: -0.03em; }   /* 시간표 과목명은 칸이 좁음 */
+.clock-time, .big-time { letter-spacing: 1px; }
